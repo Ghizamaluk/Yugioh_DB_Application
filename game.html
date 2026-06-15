@@ -109,21 +109,31 @@
   #popup-close:hover { color: #e74c3c; }
   #popup-img-col { flex: 0 0 140px; display: flex; flex-direction: column; gap: 12px; align-items: center; }
   #popup-img-col img { width: 140px; border-radius: 8px; border: 1px solid #2a2a4a; }
-  #popup-info { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+  #popup-info { flex: 1; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
   #popup-name { font-size: 1.1rem; font-weight: bold; color: #c39bd3; }
   #popup-meta { font-size: 0.78rem; color: #666; }
-  #popup-desc { font-size: 0.82rem; line-height: 1.6; color: #ccc; }
-  #popup-errata {
-    background: #1a0e00; border: 1px solid #7a4a00; border-radius: 8px;
-    padding: 12px; display: none;
+
+  /* Pre-answer panel */
+  #popup-pre { display: flex; flex-direction: column; gap: 8px; }
+  #popup-pre-badge {
+    display: inline-block; background: #1a1200; border: 1px solid #7a5a00;
+    color: #f0b429; font-size: 0.72rem; font-weight: bold;
+    padding: 3px 10px; border-radius: 4px; align-self: flex-start;
   }
-  #popup-errata.show { display: block; }
-  #popup-errata-title { font-size: 0.72rem; color: #f0b429; font-weight: bold; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-  #popup-errata-imgs { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
-  #popup-errata-imgs img { width: 80px; border-radius: 6px; border: 1px solid #3a2a00; cursor: pointer; transition: transform 0.15s; }
-  #popup-errata-imgs img:hover { transform: scale(1.08); }
-  #popup-errata-orig { font-size: 0.78rem; color: #c8a050; line-height: 1.5; }
-  #popup-errata-label { font-size: 0.68rem; color: #555; margin-top: 4px; }
+  #popup-pre-desc { font-size: 0.84rem; line-height: 1.6; color: #ddd; }
+  #popup-pre-note { font-size: 0.72rem; color: #555; font-style: italic; }
+
+  /* Post-answer panel */
+  #popup-post { display: flex; flex-direction: column; gap: 10px; }
+  .popup-section-label { font-size: 0.68rem; color: #555; text-transform: uppercase; letter-spacing: 0.8px; }
+  .errata-label { color: #7a5a00 !important; }
+  #popup-current-desc { font-size: 0.84rem; line-height: 1.6; color: #ddd; }
+  #popup-comparison {
+    background: #110e00; border: 1px solid #3a2a00; border-radius: 8px; padding: 12px;
+  }
+  #popup-comparison-inner { display: flex; gap: 12px; align-items: flex-start; margin-top: 8px; }
+  #popup-orig-img { width: 70px; border-radius: 6px; flex: 0 0 70px; border: 1px solid #3a2a00; }
+  #popup-orig-desc { font-size: 0.8rem; line-height: 1.55; color: #c8a050; flex: 1; }
 
   /* Answer buttons */
   #buttons {
@@ -283,12 +293,25 @@
     <div id="popup-info">
       <div id="popup-name"></div>
       <div id="popup-meta"></div>
-      <div id="popup-desc"></div>
-      <div id="popup-errata">
-        <div id="popup-errata-title">&#9888; Prima Edizione (Pre-Errata)</div>
-        <div id="popup-errata-imgs"></div>
-        <div id="popup-errata-orig"></div>
-        <div id="popup-errata-label">Testo originale — modificato in una ristampa successiva</div>
+
+      <!-- PRE-ANSWER: show original text only -->
+      <div id="popup-pre">
+        <div id="popup-pre-badge"></div>
+        <div id="popup-pre-desc"></div>
+        <div id="popup-pre-note"></div>
+      </div>
+
+      <!-- POST-ANSWER: show current text + optional comparison -->
+      <div id="popup-post">
+        <div class="popup-section-label">Testo attuale</div>
+        <div id="popup-current-desc"></div>
+        <div id="popup-comparison">
+          <div class="popup-section-label errata-label">&#9888; Confronto Pre-Errata</div>
+          <div id="popup-comparison-inner">
+            <img id="popup-orig-img" src="" alt="Prima edizione">
+            <div id="popup-orig-desc"></div>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -346,7 +369,13 @@ function loadCard() {
   if (idx >= deck.length) { endGame(); return; }
   current = deck[idx];
   waiting = false;
-  document.getElementById('card-img').src = current.img;
+  // Show original (pre-errata) image if available, otherwise modern
+  const errata = ERRATA[current.en];
+  const displayImg = errata
+    ? YGO_IMG_BASE + encodeURIComponent(errata.img)
+    : current.img;
+  document.getElementById('card-img').src = displayImg;
+  document.getElementById('card-img').onerror = function() { this.src = current.img; };
   document.getElementById('card-name').textContent = name(current);
   document.getElementById('card-name-en').textContent = getLang() !== 'en' ? current.en : '';
   showButtons();
@@ -397,60 +426,71 @@ function endGame() {
 
 /* ---- Keyboard ---- */
 const ERRATA = {
-  "Sinister Serpent":         { orig: "During your Standby Phase, if this card is in your Graveyard, you can return it to your hand.", img: "SinisterSerpent-SDD-NA-PScR-UE.jpg" },
-  "Witch of the Black Forest":{ orig: "When this card is sent from the field to the Graveyard, add 1 monster with DEF 1500 or less from your Deck to your hand.", img: "WitchoftheBlackForest-MRD-NA-R-1E.png" },
-  "Imperial Order":           { orig: "Negate all Spell Card effects. Pay 700 Life Points each of your Standby Phases or destroy this card.", img: "ImperialOrder-PSV-NA-ScR-1E.png" },
-  "Solemn Judgment":          { orig: "Pay half your Life Points to negate a Spell/Trap activation or monster summon and destroy it.", img: "SolemnJudgment-MRD-NA-UR-1E.png" },
-  "Cyber Jar":                { orig: "FLIP: Destroys all monsters on the field. Both players pick 5 cards from their Decks and Special Summon any Level 4 or lower monsters in face-up ATK or face-down DEF position.", img: "CyberJar-MRL-NA-R-1E.png" },
-  "Future Fusion":            { orig: "Send Fusion Materials from your Deck to the GY; Special Summon the Fusion Monster during your 2nd Standby Phase. When this card leaves the field, destroy that monster.", img: "FutureFusion-POTD-EN-R-1E.jpg" },
-  "Reasoning":                { orig: "Your opponent declares a monster Level. Pick cards from your Deck until a monster is revealed. If it matches the declared Level, send all to GY; otherwise Special Summon it.", img: "Reasoning-PGD-NA-C-1E.jpg" },
-  "Trap Dustshoot":           { orig: "Activate when your opponent has 4+ cards in hand. Look at their hand, return 1 Monster Card to their Deck.", img: "TrapDustshoot-PGD-NA-C-1E.jpg" },
-  "Tribe-Infecting Virus":    { orig: "Discard 1 card; declare 1 monster Type to destroy all face-up monsters of that Type.", img: "TribeInfectingVirus-MFC-NA-SR-1E.jpg" },
-  "Creature Swap":            { orig: "Both players swap control of 1 monster. The battle positions cannot change during this turn.", img: "CreatureSwap-LOD-NA-UR-1E.jpg" },
-  "Skill Drain":              { orig: "Pay 1000 LP. Negate the effects of all face-up Effect Monsters on the field.", img: "SkillDrain-DCR-NA-R-1E.jpg" },
-  "Dark Armed Dragon":        { orig: "Cannot be Normal Summoned. Special Summon only with exactly 3 DARK monsters in your GY. Banish 1 DARK monster from your GY to destroy 1 card.", img: "DarkArmedDragon-PTDN-EN-ScR-1E.png" }
+  "Sinister Serpent":                          { orig: "During your Standby Phase, if this card is in your Graveyard, you can return it to your hand.", img: "SinisterSerpent-SDD-NA-PScR-UE.jpg" },
+  "Chaos Emperor Dragon - Envoy of the End":   { orig: "This card can only be Special Summoned by removing 1 LIGHT and 1 DARK monster in your Graveyard from play. Pay 1000 Life Points to send all cards in both players' hands and on the field to the Graveyard. Inflict 300 damage to your opponent for each card sent.", img: "ChaosEmperorDragonEnvoyoftheEnd-IOC-NA-ScR-1E.jpg" },
+  "Witch of the Black Forest":                 { orig: "When this card is sent from the field to the Graveyard, add 1 monster with DEF 1500 or less from your Deck to your hand.", img: "WitchoftheBlackForest-MRD-NA-R-1E.png" },
+  "Imperial Order":                            { orig: "Negate all Spell Card effects on the field. Pay 700 Life Points each of your Standby Phases or destroy this card.", img: "ImperialOrder-PSV-NA-ScR-1E.png" },
+  "Solemn Judgment":                           { orig: "Pay half your Life Points to negate a Spell/Trap activation or monster summon and destroy it.", img: "SolemnJudgment-MRD-NA-UR-1E.png" },
+  "Cyber Jar":                                 { orig: "FLIP: Destroys all monsters on the field. Both players pick 5 cards from their Decks and Special Summon any Level 4 or lower monsters in face-up ATK or face-down DEF position.", img: "CyberJar-MRL-NA-R-1E.png" },
+  "Future Fusion":                             { orig: "Send Fusion Materials from your Deck to the GY; Special Summon the Fusion Monster during your 2nd Standby Phase. When this card leaves the field, destroy that monster.", img: "FutureFusion-POTD-EN-R-1E.jpg" },
+  "Reasoning":                                 { orig: "Your opponent declares a monster Level. Pick cards from your Deck until a monster is revealed. If it matches the declared Level, send all to GY; otherwise Special Summon it.", img: "Reasoning-PGD-NA-C-1E.jpg" },
+  "Trap Dustshoot":                            { orig: "Activate when your opponent has 4+ cards in hand. Look at their hand, return 1 Monster Card to their Deck.", img: "TrapDustshoot-PGD-NA-C-1E.jpg" },
+  "Tribe-Infecting Virus":                     { orig: "Discard 1 card; declare 1 monster Type to destroy all face-up monsters of that Type.", img: "TribeInfectingVirus-MFC-NA-SR-1E.jpg" },
+  "Creature Swap":                             { orig: "Both players swap control of 1 monster. The battle positions cannot change during this turn.", img: "CreatureSwap-LOD-NA-UR-1E.jpg" },
+  "Skill Drain":                               { orig: "Pay 1000 LP. Negate the effects of all face-up Effect Monsters on the field.", img: "SkillDrain-DCR-NA-R-1E.jpg" },
+  "Dark Armed Dragon":                         { orig: "Cannot be Normal Summoned. Special Summon only with exactly 3 DARK monsters in your GY. Banish 1 DARK monster from your GY to destroy 1 card.", img: "DarkArmedDragon-PTDN-EN-ScR-1E.png" }
 };
 const YGO_IMG_BASE = "https://yugipedia.com/wiki/Special:FilePath/";
 
-let popupCardData = null;
-
 function openCardPopup() {
   if (!current) return;
-  popupCardData = current;
-
-  // Fetch full card info from API
-  const bigImg = current.img.replace('/cards_small/', '/cards/');
-  document.getElementById('popup-card-img').src = bigImg;
-  document.getElementById('popup-name').textContent = getLang() === 'it' ? current.it : current.en;
-  document.getElementById('popup-meta').textContent = current.en;
-
-  // Fetch desc from API
-  document.getElementById('popup-desc').textContent = 'Caricamento...';
-  fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name=' + encodeURIComponent(current.en))
-    .then(r => r.json())
-    .then(d => {
-      if (d.data && d.data[0]) {
-        const c = d.data[0];
-        document.getElementById('popup-desc').textContent = c.desc || '';
-        const meta = [c.humanReadableCardType, c.attribute, c.level ? 'Lv.' + c.level : '', c.atk != null ? 'ATK ' + c.atk : '', c.def != null ? 'DEF ' + c.def : '']
-          .filter(Boolean).join(' · ');
-        document.getElementById('popup-meta').textContent = meta;
-      }
-    })
-    .catch(() => { document.getElementById('popup-desc').textContent = ''; });
-
-  // Errata section
   const errata = ERRATA[current.en];
-  const errDiv = document.getElementById('popup-errata');
-  if (errata) {
-    errDiv.classList.add('show');
-    const imgUrl = YGO_IMG_BASE + encodeURIComponent(errata.img);
-    document.getElementById('popup-errata-imgs').innerHTML =
-      '<img src="' + imgUrl + '" alt="Prima edizione" title="Prima edizione" ' +
-      'onerror="this.style.display=\'none\'">';
-    document.getElementById('popup-errata-orig').textContent = errata.orig;
+  const answered = waiting; // true = user has already answered
+
+  // Image: before answer → original (pre-errata); after answer → modern
+  const showOrig = errata && !answered;
+  const popupImg = showOrig
+    ? YGO_IMG_BASE + encodeURIComponent(errata.img)
+    : current.img.replace('/cards_small/', '/cards/');
+  document.getElementById('popup-card-img').src = popupImg;
+  document.getElementById('popup-card-img').onerror = function() { this.src = current.img; };
+  document.getElementById('popup-name').textContent = getLang() === 'it' ? current.it : current.en;
+
+  if (showOrig) {
+    // PRE-ANSWER: show only original text, no current desc
+    document.getElementById('popup-pre').style.display = 'block';
+    document.getElementById('popup-post').style.display = 'none';
+    document.getElementById('popup-pre-badge').textContent = '📜 Prima Edizione';
+    document.getElementById('popup-pre-desc').textContent = errata.orig;
+    document.getElementById('popup-pre-note').textContent = 'Questa è la versione originale. Rispondi per vedere quella attuale.';
+    document.getElementById('popup-meta').textContent = '';
   } else {
-    errDiv.classList.remove('show');
+    // POST-ANSWER or no errata: show current desc, plus comparison if errata exists
+    document.getElementById('popup-pre').style.display = 'none';
+    document.getElementById('popup-post').style.display = 'block';
+    document.getElementById('popup-meta').textContent = 'Caricamento...';
+    document.getElementById('popup-current-desc').textContent = 'Caricamento...';
+
+    fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name=' + encodeURIComponent(current.en))
+      .then(r => r.json())
+      .then(d => {
+        if (d.data && d.data[0]) {
+          const c = d.data[0];
+          const meta = [c.humanReadableCardType, c.attribute, c.level ? 'Lv.' + c.level : '', c.atk != null ? 'ATK ' + c.atk : '', c.def != null ? 'DEF ' + c.def : ''].filter(Boolean).join(' · ');
+          document.getElementById('popup-meta').textContent = meta;
+          document.getElementById('popup-current-desc').textContent = c.desc || '';
+        }
+      })
+      .catch(() => { document.getElementById('popup-current-desc').textContent = ''; document.getElementById('popup-meta').textContent = ''; });
+
+    if (errata) {
+      document.getElementById('popup-comparison').style.display = 'block';
+      document.getElementById('popup-orig-img').src = YGO_IMG_BASE + encodeURIComponent(errata.img);
+      document.getElementById('popup-orig-img').onerror = function() { this.style.display='none'; };
+      document.getElementById('popup-orig-desc').textContent = errata.orig;
+    } else {
+      document.getElementById('popup-comparison').style.display = 'none';
+    }
   }
 
   document.getElementById('popup-overlay').classList.add('open');

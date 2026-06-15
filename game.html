@@ -369,13 +369,9 @@ function loadCard() {
   if (idx >= deck.length) { endGame(); return; }
   current = deck[idx];
   waiting = false;
-  // Show original (pre-errata) image if available, otherwise modern
-  const errata = ERRATA[current.en];
-  const displayImg = errata
-    ? YGO_IMG_BASE + encodeURIComponent(errata.img)
-    : current.img;
-  document.getElementById('card-img').src = displayImg;
-  document.getElementById('card-img').onerror = function() { this.src = current.img; };
+  // Always show modern image — errata comparison revealed only after answering
+  document.getElementById('card-img').src = current.img;
+  document.getElementById('card-img').onerror = null;
   document.getElementById('card-name').textContent = name(current);
   document.getElementById('card-name-en').textContent = getLang() !== 'en' ? current.en : '';
   showButtons();
@@ -445,52 +441,38 @@ const YGO_IMG_BASE = "https://yugipedia.com/wiki/Special:FilePath/";
 function openCardPopup() {
   if (!current) return;
   const errata = ERRATA[current.en];
-  const answered = waiting; // true = user has already answered
 
-  // Image: before answer → original (pre-errata); after answer → modern
-  const showOrig = errata && !answered;
-  const popupImg = showOrig
-    ? YGO_IMG_BASE + encodeURIComponent(errata.img)
-    : current.img.replace('/cards_small/', '/cards/');
-  document.getElementById('popup-card-img').src = popupImg;
+  // Image: always modern
+  document.getElementById('popup-card-img').src = current.img.replace('/cards_small/', '/cards/');
   document.getElementById('popup-card-img').onerror = function() { this.src = current.img; };
   document.getElementById('popup-name').textContent = getLang() === 'it' ? current.it : current.en;
 
-  if (showOrig) {
-    // PRE-ANSWER: show only original text, no current desc
-    document.getElementById('popup-pre').style.display = 'block';
-    document.getElementById('popup-post').style.display = 'none';
-    document.getElementById('popup-pre-badge').textContent = '📜 Prima Edizione';
-    document.getElementById('popup-pre-desc').textContent = errata.orig;
-    document.getElementById('popup-pre-note').textContent = 'Questa è la versione originale. Rispondi per vedere quella attuale.';
-    document.getElementById('popup-meta').textContent = '';
+  // Always show current desc
+  document.getElementById('popup-pre').style.display = 'none';
+  document.getElementById('popup-post').style.display = 'block';
+  document.getElementById('popup-meta').textContent = 'Caricamento...';
+  document.getElementById('popup-current-desc').textContent = 'Caricamento...';
+
+  fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name=' + encodeURIComponent(current.en))
+    .then(r => r.json())
+    .then(d => {
+      if (d.data && d.data[0]) {
+        const c = d.data[0];
+        const meta = [c.humanReadableCardType, c.attribute, c.level ? 'Lv.' + c.level : '', c.atk != null ? 'ATK ' + c.atk : '', c.def != null ? 'DEF ' + c.def : ''].filter(Boolean).join(' · ');
+        document.getElementById('popup-meta').textContent = meta;
+        document.getElementById('popup-current-desc').textContent = c.desc || '';
+      }
+    })
+    .catch(() => { document.getElementById('popup-meta').textContent = ''; document.getElementById('popup-current-desc').textContent = ''; });
+
+  // Errata comparison: only show AFTER the user has answered
+  if (errata && waiting) {
+    document.getElementById('popup-comparison').style.display = 'block';
+    document.getElementById('popup-orig-img').src = YGO_IMG_BASE + encodeURIComponent(errata.img);
+    document.getElementById('popup-orig-img').onerror = function() { this.style.display = 'none'; };
+    document.getElementById('popup-orig-desc').textContent = errata.orig;
   } else {
-    // POST-ANSWER or no errata: show current desc, plus comparison if errata exists
-    document.getElementById('popup-pre').style.display = 'none';
-    document.getElementById('popup-post').style.display = 'block';
-    document.getElementById('popup-meta').textContent = 'Caricamento...';
-    document.getElementById('popup-current-desc').textContent = 'Caricamento...';
-
-    fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name=' + encodeURIComponent(current.en))
-      .then(r => r.json())
-      .then(d => {
-        if (d.data && d.data[0]) {
-          const c = d.data[0];
-          const meta = [c.humanReadableCardType, c.attribute, c.level ? 'Lv.' + c.level : '', c.atk != null ? 'ATK ' + c.atk : '', c.def != null ? 'DEF ' + c.def : ''].filter(Boolean).join(' · ');
-          document.getElementById('popup-meta').textContent = meta;
-          document.getElementById('popup-current-desc').textContent = c.desc || '';
-        }
-      })
-      .catch(() => { document.getElementById('popup-current-desc').textContent = ''; document.getElementById('popup-meta').textContent = ''; });
-
-    if (errata) {
-      document.getElementById('popup-comparison').style.display = 'block';
-      document.getElementById('popup-orig-img').src = YGO_IMG_BASE + encodeURIComponent(errata.img);
-      document.getElementById('popup-orig-img').onerror = function() { this.style.display='none'; };
-      document.getElementById('popup-orig-desc').textContent = errata.orig;
-    } else {
-      document.getElementById('popup-comparison').style.display = 'none';
-    }
+    document.getElementById('popup-comparison').style.display = 'none';
   }
 
   document.getElementById('popup-overlay').classList.add('open');

@@ -452,28 +452,26 @@ function openCardPopup() {
   document.getElementById('popup-name').textContent = getLang() === 'it' ? current.it : current.en;
 
   if (!waiting) {
-    // ── PRE-ANSWER ──────────────────────────────────────────────────
-    // Show pre-errata image + original text only (no spoiler)
-    if (errata) {
-      document.getElementById('popup-card-img').src = YGO_IMG_BASE + encodeURIComponent(errata.img);
-      document.getElementById('popup-card-img').onerror = function() { this.src = current.img; this.onerror = null; };
-      document.getElementById('popup-meta').textContent = '';
-      document.getElementById('popup-pre').style.display = 'block';
-      document.getElementById('popup-post').style.display = 'none';
-      document.getElementById('popup-pre-badge').textContent = '';
-      document.getElementById('popup-pre-badge').style.display = 'none';
-      document.getElementById('popup-pre-desc').textContent = errata.orig;
-      document.getElementById('popup-pre-note').textContent = '';
-    } else {
-      // No errata: show modern image + fetch current desc
-      document.getElementById('popup-card-img').src = current.img.replace('/cards_small/', '/cards/');
-      document.getElementById('popup-card-img').onerror = function() { this.src = current.img; this.onerror = null; };
-      document.getElementById('popup-pre').style.display = 'none';
-      document.getElementById('popup-post').style.display = 'block';
-      document.getElementById('popup-comparison').style.display = 'none';
-      document.getElementById('popup-meta').textContent = 'Caricamento...';
-      document.getElementById('popup-current-desc').textContent = 'Caricamento...';
-      fetchCurrentDesc();
+    // ── PRE-ANSWER: identical layout for ALL cards — no hints ────────
+    // Show pre-errata image if available, otherwise modern. Either way
+    // just show image + text with zero extra markup.
+    const imgSrc = errata
+      ? YGO_IMG_BASE + encodeURIComponent(errata.img)
+      : current.img.replace('/cards_small/', '/cards/');
+    document.getElementById('popup-card-img').src = imgSrc;
+    document.getElementById('popup-card-img').onerror = function() { this.src = current.img; this.onerror = null; };
+    document.getElementById('popup-meta').textContent = '';
+
+    // Show text (original if errata, current if not) in the same neutral div
+    document.getElementById('popup-pre').style.display = 'block';
+    document.getElementById('popup-post').style.display = 'none';
+    document.getElementById('popup-pre-badge').style.display = 'none';
+    document.getElementById('popup-pre-desc').textContent = errata ? errata.orig : '...';
+    document.getElementById('popup-pre-note').textContent = '';
+
+    if (!errata) {
+      // fetch current desc for cards without errata
+      fetchCurrentDesc(txt => { document.getElementById('popup-pre-desc').textContent = txt; });
     }
   } else {
     // ── POST-ANSWER ─────────────────────────────────────────────────
@@ -482,8 +480,8 @@ function openCardPopup() {
     document.getElementById('popup-card-img').onerror = function() { this.src = current.img; this.onerror = null; };
     document.getElementById('popup-pre').style.display = 'none';
     document.getElementById('popup-post').style.display = 'block';
-    document.getElementById('popup-meta').textContent = 'Caricamento...';
-    document.getElementById('popup-current-desc').textContent = 'Caricamento...';
+    document.getElementById('popup-meta').textContent = '';
+    document.getElementById('popup-current-desc').textContent = '';
     fetchCurrentDesc();
     // Show comparison if errata exists
     if (errata) {
@@ -499,7 +497,7 @@ function openCardPopup() {
   document.getElementById('popup-overlay').classList.add('open');
 }
 
-function fetchCurrentDesc() {
+function fetchCurrentDesc(callback) {
   fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name=' + encodeURIComponent(current.en))
     .then(r => r.json())
     .then(d => {
@@ -507,10 +505,11 @@ function fetchCurrentDesc() {
         const c = d.data[0];
         const meta = [c.humanReadableCardType, c.attribute, c.level ? 'Lv.' + c.level : '', c.atk != null ? 'ATK ' + c.atk : '', c.def != null ? 'DEF ' + c.def : ''].filter(Boolean).join(' · ');
         document.getElementById('popup-meta').textContent = meta;
-        document.getElementById('popup-current-desc').textContent = c.desc || '';
+        if (callback) callback(c.desc || '');
+        else document.getElementById('popup-current-desc').textContent = c.desc || '';
       }
     })
-    .catch(() => { document.getElementById('popup-meta').textContent = ''; document.getElementById('popup-current-desc').textContent = ''; });
+    .catch(() => {});
 }
 
 function closePopup(e) {

@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YGO – Tutte le Carte</title>
+<link rel="stylesheet" href="lang.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0a0a1a; color: #e0e0e0; }
+
+  /* ── Top bar ── */
+  #topbar {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 20px; background: #12122a;
+    border-bottom: 2px solid #4a1a8a; height: 52px;
+  }
+  #topbar .back-btn {
+    background: none; border: 1px solid #444; border-radius: 6px;
+    color: #aaa; padding: 4px 12px; cursor: pointer; font-size: 0.8rem;
+    text-decoration: none; display: flex; align-items: center; gap: 5px;
+  }
+  #topbar .back-btn:hover { border-color: #9b59b6; color: #c39bd3; }
+  #topbar h1 { font-size: 1rem; color: #c39bd3; flex: 0 0 auto; }
+  #topbar .filter-sep { width: 1px; height: 20px; background: #333; }
+
+  /* ── Filters ── */
+  #filters {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    padding: 8px 20px; background: #0f0f20; border-bottom: 1px solid #1a1a2a;
+  }
+  .fbtn {
+    background: #1e1e3a; color: #ccc; border: 1px solid #333;
+    border-radius: 6px; padding: 4px 12px; font-size: 0.78rem; cursor: pointer;
+    transition: all 0.12s;
+  }
+  .fbtn:hover { background: #2a2a4a; }
+  .fbtn.active { border-color: #9b59b6; color: #c39bd3; background: #1e0e2e; }
+  .fbtn.f-forb.active   { border-color: #c0392b; color: #e74c3c; background: #1e0000; }
+  .fbtn.f-lim.active    { border-color: #e67e22; color: #e67e22; background: #1a1000; }
+  .fbtn.f-semi.active   { border-color: #f0b429; color: #f0b429; background: #1a1400; }
+  .fbtn.f-unlim.active  { border-color: #27ae60; color: #2ecc71; background: #001a08; }
+  select.fsel {
+    background: #1e1e3a; color: #ccc; border: 1px solid #333;
+    border-radius: 6px; padding: 4px 8px; font-size: 0.78rem; cursor: pointer;
+  }
+  #search-box {
+    background: #1e1e3a; color: #e0e0e0; border: 1px solid #333;
+    border-radius: 6px; padding: 4px 10px; font-size: 0.78rem; width: 200px;
+  }
+  #card-count { font-size: 0.75rem; color: #666; margin-left: auto; white-space: nowrap; }
+
+  /* ── Loading ── */
+  #loading {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    height: 60vh; gap: 14px; color: #666;
+  }
+  .spinner {
+    width: 44px; height: 44px; border: 3px solid #222; border-top-color: #9b59b6;
+    border-radius: 50%; animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Table ── */
+  #table-wrap {
+    height: calc(100vh - 100px);
+    overflow-y: auto;
+  }
+  #table-wrap::-webkit-scrollbar { width: 6px; background: #111; }
+  #table-wrap::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  thead { position: sticky; top: 0; z-index: 10; }
+  th {
+    background: #111125; color: #666; padding: 9px 12px; text-align: left;
+    font-weight: 600; text-transform: uppercase; font-size: 0.68rem;
+    letter-spacing: 0.5px; cursor: pointer; user-select: none; white-space: nowrap;
+    border-bottom: 1px solid #1a1a2a;
+  }
+  th:hover { color: #bbb; }
+  td { padding: 7px 12px; border-bottom: 1px solid #0e0e1e; }
+  tr:nth-child(even) td { background: #0c0c1c; }
+  tr[data-ci]:hover td { background: #131328; cursor: pointer; }
+
+  .badge { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; font-weight: bold; white-space: nowrap; }
+  .badge.Forbidden    { background: #1e0000; color: #e74c3c; border: 1px solid #c0392b; }
+  .badge.Limited      { background: #1a1000; color: #e67e22; border: 1px solid #e67e22; }
+  .badge.Semi-Limited { background: #1a1400; color: #f0b429; border: 1px solid #f0b429; }
+  .badge.Unlimited    { background: #001a08; color: #2ecc71; border: 1px solid #27ae60; }
+  .type-b { display: inline-block; padding: 2px 7px; border-radius: 4px; font-size: 0.7rem; }
+  .type-b.Monster { background: #1a0a00; color: #e67e22; border: 1px solid #7a3a00; }
+  .type-b.Spell   { background: #00100a; color: #1abc9c; border: 1px solid #0a5a3a; }
+  .type-b.Trap    { background: #12001a; color: #9b59b6; border: 1px solid #5a1a7a; }
+  .type-b.Other   { background: #111; color: #888; border: 1px solid #333; }
+
+  /* ── Pagination ── */
+  #pagination {
+    display: flex; gap: 6px; justify-content: center; padding: 12px; flex-wrap: wrap;
+    position: sticky; bottom: 0; background: #0a0a1a; border-top: 1px solid #1a1a2a;
+  }
+  #pagination button {
+    padding: 4px 10px; border-radius: 5px; border: 1px solid #2a2a3a;
+    background: #111; color: #888; cursor: pointer; font-size: 0.78rem;
+  }
+  #pagination button:disabled { opacity: 0.3; cursor: default; }
+  #pagination button:not(:disabled):hover,
+  #pagination button.pactive { background: #151535; color: #fff; border-color: #9b59b6; }
+
+  /* ── Popup ── */
+  #popup-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.8); z-index: 100;
+    align-items: center; justify-content: center;
+  }
+  #popup-overlay.active { display: flex; }
+  #popup {
+    background: #1a1a2e; border: 1px solid #9b59b6; border-radius: 10px;
+    padding: 24px; max-width: 780px; width: 94%;
+    display: flex; gap: 20px; position: relative;
+    max-height: 90vh; overflow-y: auto;
+  }
+  #popup-close {
+    position: absolute; top: 10px; right: 14px;
+    background: none; border: none; color: #aaa; font-size: 1.4rem; cursor: pointer;
+  }
+  #popup-close:hover { color: #c0392b; }
+  #popup-img { flex: 0 0 160px; display: flex; align-items: flex-start; justify-content: center; }
+  #popup-img img {
+    width: 160px; border-radius: 6px; border: 1px solid #444;
+    cursor: zoom-in; transition: transform 0.15s;
+  }
+  #popup-img img:hover { transform: scale(1.04); }
+  #popup-img .no-img {
+    width: 160px; height: 220px; background: #1e1e3a; border-radius: 6px;
+    display: flex; align-items: center; justify-content: center; color: #444; font-size: 0.7rem;
+  }
+  #popup-info { flex: 1; }
+  #popup-name { font-size: 1.2rem; font-weight: bold; color: #c39bd3; margin-bottom: 8px; }
+  #popup-meta { font-size: 0.85rem; color: #aaa; margin-bottom: 12px; line-height: 1.7; }
+  #popup-desc { font-size: 0.85rem; line-height: 1.6; color: #ccc; }
+
+  /* zoom overlay */
+  #zoom-overlay {
+    display: none; position: fixed; inset: 0;
+    background: rgba(0,0,0,0.92); z-index: 200;
+    align-items: center; justify-content: center; cursor: zoom-out;
+  }
+  #zoom-overlay.active { display: flex; }
+  #zoom-overlay img {
+    max-width: min(421px, 90vw); max-height: 90vh;
+    border-radius: 10px; border: 2px solid #9b59b6; pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<div id="topbar">
+  <a class="back-btn" href="index.html">&#8592; Home</a>
+  <div class="filter-sep"></div>
+  <h1>&#9829; Tutte le Carte YGO</h1>
+  <div style="margin-left:auto"><div id="lang-container"></div></div>
+</div>
+
+<div id="filters">
+  <span style="font-size:0.78rem;color:#888">Status:</span>
+  <button class="fbtn f-all active" onclick="setStatus('',this)">Tutti</button>
+  <button class="fbtn f-forb"  onclick="setStatus('Forbidden',this)">Forbidden</button>
+  <button class="fbtn f-lim"   onclick="setStatus('Limited',this)">Limited</button>
+  <button class="fbtn f-semi"  onclick="setStatus('Semi-Limited',this)">Semi-Limited</button>
+  <button class="fbtn f-unlim" onclick="setStatus('Unlimited',this)">Unlimited</button>
+  <div style="width:1px;height:18px;background:#333;margin:0 4px"></div>
+  <span style="font-size:0.78rem;color:#888">Tipo:</span>
+  <button class="fbtn active" onclick="setType('',this)">Tutti</button>
+  <button class="fbtn" onclick="setType('Monster',this)">Monster</button>
+  <button class="fbtn" onclick="setType('Spell',this)">Spell</button>
+  <button class="fbtn" onclick="setType('Trap',this)">Trap</button>
+  <div style="width:1px;height:18px;background:#333;margin:0 4px"></div>
+  <input id="search-box" type="text" placeholder="Cerca carta..." oninput="applyFilters()">
+  <span id="card-count"></span>
+</div>
+
+<div id="loading"><div class="spinner"></div><span>Caricamento carte...</span></div>
+<div id="table-wrap" style="display:none">
+  <table>
+    <thead><tr>
+      <th onclick="sortBy('name')">Nome &#8597;</th>
+      <th onclick="sortBy('status')">Status &#8597;</th>
+      <th onclick="sortBy('type')">Tipo &#8597;</th>
+      <th onclick="sortBy('subtype')">Sottotipo &#8597;</th>
+      <th onclick="sortBy('atk')">ATK &#8597;</th>
+      <th onclick="sortBy('def')">DEF &#8597;</th>
+      <th onclick="sortBy('level')">Lv &#8597;</th>
+      <th onclick="sortBy('attribute')">Attr &#8597;</th>
+      <th onclick="sortBy('tcg_date')">Rilascio &#8597;</th>
+      <th>Set</th>
+    </tr></thead>
+    <tbody id="tbody"></tbody>
+  </table>
+  <div id="pagination"></div>
+</div>
+
+<div id="zoom-overlay"><img id="zoom-img" src="" alt=""></div>
+
+<div id="popup-overlay">
+  <div id="popup">
+    <button id="popup-close">&#x2715;</button>
+    <div id="popup-img"></div>
+    <div id="popup-info">
+      <div id="popup-name"></div>
+      <div id="popup-meta"></div>
+      <div id="popup-desc"></div>
+    </div>
+  </div>
+</div>
+
+<script src="names.js"></script>
+<script src="lang.js"></script>
+<script>
+const PAGE = 50;
+let ALL = [], filtered = [], page = 1, statusF = '', typeF = '', sortK = 'name', sortAsc = true;
+
+function getType(t) {
+  if (!t) return 'Other';
+  if (t.includes('Monster')) return 'Monster';
+  if (t.includes('Spell'))   return 'Spell';
+  if (t.includes('Trap'))    return 'Trap';
+  return 'Other';
+}
+function statusTCG(info) {
+  if (!info) return 'Unlimited';
+  return info.ban_tcg || 'Unlimited';
+}
+
+function statusTCG(info) {
+  if (!info) return 'Unlimited';
+  return info.ban_tcg || 'Unlimited';
+}
+
+let SETS_MAP = {}; // set_code → {date, name}
+
+function setCodePrefix(code) {
+  return code.replace(/-?\d+[A-Z]*$/, '');
+}
+function earliestSet(card_sets) {
+  if (!card_sets || !card_sets.length) return { date: '', name: '' };
+  let best = null, bestDate = null;
+  card_sets.forEach(s => {
+    const prefix = setCodePrefix(s.set_code || '');
+    const info = SETS_MAP[prefix] || SETS_MAP[prefix.split('-')[0]];
+    if (info && info.date) {
+      if (!bestDate || info.date < bestDate) {
+        bestDate = info.date;
+        best = { date: info.date, name: info.name };
+      }
+    }
+  });
+  return best || { date: '', name: card_sets[0].set_name || '' };
+}
+
+async function loadData() {
+  try {
+    // Sets map inlined at build time
+    SETS_MAP = {"YS15": {"date": "2015-05-29", "name": "Saber Force Starter Deck"}, "STAS": {"date": "2024-01-26", "name": "2-Player Starter Set"}, "CT10": {"date": "2013-11-22", "name": "2013 Collectible Tins Wave 2"}, "MP14": {"date": "2014-08-28", "name": "2014 Mega-Tin Mega Pack"}, "CT11": {"date": "2014-08-28", "name": "2014 Mega-Tins"}, "MP15": {"date": "2015-09-17", "name": "2015 Mega-Tin Mega Pack"}, "CT12": {"date": "2015-09-17", "name": "2015 Mega-Tins"}, "MP16": {"date": "2016-09-01", "name": "2016 Mega-Tin Mega Pack"}, "CT13": {"date": "2016-09-01", "name": "2016 Mega-Tins"}, "MP17": {"date": "2017-08-24", "name": "2017 Mega-Tin Mega Pack"}, "CT14": {"date": "2017-08-24", "name": "2017 Mega-Tins"}, "MP18": {"date": "2018-08-30", "name": "2018 Mega-Tin Mega Pack"}, "CT15": {"date": "2018-08-30", "name": "2018 Mega-Tins"}, "TN19": {"date": "2019-08-29", "name": "2019 Gold Sarcophagus Tin"}, "MP19": {"date": "2019-08-29", "name": "2019 Gold Sarcophagus Tin Mega Pack"}, "MP20": {"date": "2020-08-27", "name": "2020 Tin of Lost Memories Mega Pack"}, "MP21": {"date": "2021-09-30", "name": "2021 Tin of Ancient Battles"}, "MP22": {"date": "2022-09-14", "name": "2022 Tin of the Pharaoh's Gods"}, "MP25": {"date": "2025-09-04", "name": "2025 Mega-Pack Tin"}, "RA01": {"date": "2023-11-02", "name": "25th Anniversary Rarity Collection"}, "RA02": {"date": "2024-05-23", "name": "25th Anniversary Rarity Collection II"}, "TN23": {"date": "2023-09-07", "name": "25th Anniversary Tin: Dueling Heroes"}, "MP23": {"date": "2023-09-07", "name": "25th Anniversary Tin: Dueling Heroes Mega Pack"}, "MP24": {"date": "2024-09-19", "name": "25th Anniversary Tin: Dueling Mirrors"}, "KC01": {"date": "2024-03-01", "name": "25th Anniversary Ultimate Kaiba Set"}, "ABPF": {"date": "2010-03-26", "name": "Absolute Powerforce: Special Edition"}, "ABYR": {"date": "2012-12-05", "name": "Abyss Rising: Special Edition"}, "ADC1": {"date": "2024-02-14", "name": "Adidas collaboration card"}, "DEM4": {"date": "2018-01-06", "name": "Advanced Demo Deck Extra Pack"}, "AGOV": {"date": "2023-10-19", "name": "Age of Overlord"}, "ALIN": {"date": "2025-05-01", "name": "Alliance Insight"}, "AMDE": {"date": "2023-01-19", "name": "Amazing Defenders"}, "ANGU": {"date": "2021-04-29", "name": "Ancient Guardians"}, "ANPR": {"date": "2009-10-09", "name": "Ancient Prophecy: Special Edition"}, "AST": {"date": "2004-06-01", "name": "Ancient Sanctuary"}, "YAP1": {"date": "2008-12-08", "name": "Anniversary Pack"}, "AP08": {"date": "2015-10-23", "name": "Astral Pack Eight"}, "AP05": {"date": "2014-07-25", "name": "Astral Pack Five"}, "AP04": {"date": "2014-02-07", "name": "Astral Pack Four"}, "AP01": {"date": "2012-11-23", "name": "Astral Pack One"}, "AP07": {"date": "2015-06-04", "name": "Astral Pack Seven"}, "AP06": {"date": "2014-12-05", "name": "Astral Pack Six"}, "AP03": {"date": "2013-09-13", "name": "Astral Pack Three"}, "AP02": {"date": "2013-04-19", "name": "Astral Pack Two"}, "BACH": {"date": "2022-02-10", "name": "Battle of Chaos"}, "BP02": {"date": "2013-06-28", "name": "Battle Pack 2: War of the Giants"}, "BP03": {"date": "2014-07-31", "name": "Battle Pack 3: Monster League"}, "BATT": {"date": "2012-05-29", "name": "Battle Pack Tournament Prize Cards"}, "BP01": {"date": "2012-05-24", "name": "Battle Pack: Epic Dawn"}, "BLAR": {"date": "2020-07-23", "name": "Battles of Legend: Armageddon"}, "BLC1": {"date": "2024-02-22", "name": "Battles of Legend: Chapter 1"}, "BLCR": {"date": "2022-11-17", "name": "Battles of Legend: Crystal Revenge"}, "BLGG": {"date": "2026-06-04", "name": "Battles of Legend: Glorious Gallery"}, "BLHR": {"date": "2019-07-11", "name": "Battles of Legend: Hero's Revenge"}, "BLLR": {"date": "2017-07-06", "name": "Battles of Legend: Light's Revenge"}, "BLMM": {"date": "2025-08-28", "name": "Battles of Legend: Monster Mayhem"}, "BLMR": {"date": "2023-06-22", "name": "Battles of Legend: Monstrous Revenge"}, "BLRR": {"date": "2018-06-28", "name": "Battles of Legend: Relentless Revenge"}, "BLTR": {"date": "2024-06-20", "name": "Battles of Legend: Terminal Revenge"}, "BLZD": {"date": "2026-05-07", "name": "Blazing Dominion"}, "BLVO": {"date": "2021-01-30", "name": "Blazing Vortex Premiere! promotional card"}, "SBPR": {"date": "2020-12-07", "name": "Yu-Gi-Oh! at Home Sweepstakes"}, "BPT": {"date": "2003-09-01", "name": "Collectible Tins 2003"}, "BOSH": {"date": "2016-02-25", "name": "Breakers of Shadow: Special Edition"}, "BROL": {"date": "2021-12-02", "name": "Brothers of Legend"}, "BODE": {"date": "2021-11-04", "name": "Burst of Destiny"}, "BPRO": {"date": "2026-02-05", "name": "Burst Protocol"}, "CP08": {"date": "2009-01-05", "name": "Champion Pack: Game Eight"}, "CP05": {"date": "2008-01-08", "name": "Champion Pack: Game Five"}, "CP04": {"date": "2007-09-06", "name": "Champion Pack: Game Four"}, "CP01": {"date": "2006-11-11", "name": "Champion Pack: Game One"}, "CP07": {"date": "2008-09-01", "name": "Champion Pack: Game Seven"}, "CP06": {"date": "2008-05-12", "name": "Champion Pack: Game Six"}, "CP03": {"date": "2007-05-15", "name": "Champion Pack: Game Three"}, "CP02": {"date": "2007-02-06", "name": "Champion Pack: Game Two"}, "CHIM": {"date": "2019-12-05", "name": "Chaos Impact Special Edition"}, "CIBR": {"date": "2017-12-07", "name": "Circuit Break Special Edition"}, "CORE": {"date": "2015-12-11", "name": "Clash of Rebellions: Special Edition"}, "COTD": {"date": "2017-09-21", "name": "Code of the Duelist Special Edition"}, "CT1": {"date": "2004-09-01", "name": "Collectible Tins 2004"}, "CT2": {"date": "2005-09-01", "name": "Collectible Tins 2005"}, "CT03": {"date": "2006-11-01", "name": "Collectible Tins 2006 Wave 2"}, "CT04": {"date": "2007-11-15", "name": "Collectible Tins 2007 Wave 2"}, "CT05": {"date": "2008-09-23", "name": "Collectible Tins Exclusive 2008"}, "CT06": {"date": "2009-09-22", "name": "Collectible Tins Exclusive 2009"}, "CT07": {"date": "2010-11-02", "name": "Collectible Tins 2010 Wave 2"}, "CT08": {"date": "2011-11-01", "name": "Collectible Tins 2011 Wave 2"}, "CT09": {"date": "2013-01-18", "name": "Collectible Tins 2012 Wave 2.5"}, "CBLZ": {"date": "2013-03-21", "name": "Cosmo Blazer: Special Edition"}, "CRMS": {"date": "2009-04-07", "name": "Crimson Crisis: Special Edition"}, "CROS": {"date": "2015-07-02", "name": "Crossed Souls: Advance Edition"}, "CRBR": {"date": "2024-12-05", "name": "Crossover Breakers"}, "CSOC": {"date": "2008-12-09", "name": "Crossroads of Chaos: Special Edition"}, "SDCR": {"date": "2014-02-06", "name": "Cyber Dragon Revolution Structure Deck"}, "CDIP": {"date": "2006-11-15", "name": "Cyberdark Impact"}, "SP02": {"date": "2006-08-05", "name": "Power of the Duelist Sneak Peek Participation Card"}, "CYHO": {"date": "2018-09-13", "name": "Cybernetic Horizon Special Edition"}, "CRV": {"date": "2005-08-17", "name": "Cybernetic Revolution"}, "SP1": {"date": "2005-05-28", "name": "The Lost Millennium Sneak Peek Participation Card"}, "CYAC": {"date": "2023-05-04", "name": "Cyberstorm Access"}, "DB1": {"date": "2004-10-12", "name": "Dark Beginning 1"}, "DB2": {"date": "2005-07-27", "name": "Dark Beginning 2"}, "DCR": {"date": "2003-12-01", "name": "Dark Crisis"}, "DLG1": {"date": "2008-11-21", "name": "Dark Legends"}, "DANE": {"date": "2019-06-13", "name": "Dark Neostorm Special Edition"}, "DR1": {"date": "2005-03-19", "name": "Dark Revelation Volume 1"}, "DR2": {"date": "2005-10-20", "name": "Dark Revelation Volume 2"}, "DR3": {"date": "2006-11-25", "name": "Dark Revelation Volume 3"}, "DR04": {"date": "2007-11-14", "name": "Dark Revelation Volume 4"}, "DASA": {"date": "2018-05-24", "name": "Dark Saviors"}, "DABL": {"date": "2022-10-20", "name": "Darkwing Blast"}, "DAMA": {"date": "2021-08-07", "name": "Dawn of Majesty Premiere! promotional card"}, "DEM2": {"date": "2015-03-30", "name": "Demo Deck 2015"}, "DEM3": {"date": "2016-01-14", "name": "Demo Deck 2016"}, "DEM1": {"date": "2011-02-12", "name": "Demo Pack"}, "DESO": {"date": "2016-11-17", "name": "Destiny Soldiers"}, "DIFO": {"date": "2022-05-19", "name": "Dimension Force"}, "DOCS": {"date": "2015-12-10", "name": "Dimension of Chaos: Special Edition"}, "SR04": {"date": "2017-04-13", "name": "Dinosmasher's Fury Structure Deck"}, "DOOD": {"date": "2025-09-25", "name": "Doom of Dimensions"}, "SDDC": {"date": "2012-02-03", "name": "Dragons Collide Structure Deck"}, "DRLG": {"date": "2014-04-25", "name": "Dragons of Legend"}, "DRL2": {"date": "2015-07-16", "name": "Dragons of Legend 2"}, "DLCS": {"date": "2020-09-10", "name": "Dragons of Legend: The Complete Series"}, "DRL3": {"date": "2016-08-18", "name": "Dragons of Legend: Unleashed"}, "SDDL": {"date": "2011-03-04", "name": "Dragunity Legion Structure Deck"}, "DUDE": {"date": "2019-10-10", "name": "Duel Devastator"}, "DDY1": {"date": "2009-11-01", "name": "Duel Disk - Yusei Version"}, "DMG": {"date": "2003-10-28", "name": "Duel Master's Guide promotional cards"}, "DUOV": {"date": "2020-03-19", "name": "Duel Overload"}, "DUPO": {"date": "2019-04-03", "name": "Duel Power"}, "DTP1": {"date": "2009-06-20", "name": "Duel Terminal - Preview Wave 2"}, "DT01": {"date": "2010-01-29", "name": "Duel Terminal 1"}, "DT02": {"date": "2010-05-25", "name": "Duel Terminal 2"}, "DT03": {"date": "2010-09-25", "name": "Duel Terminal 3"}, "DT04": {"date": "2011-01-25", "name": "Duel Terminal 4"}, "DT05": {"date": "2011-09-29", "name": "Duel Terminal 5b"}, "DT06": {"date": "2012-05-25", "name": "Duel Terminal 6b"}, "DT07": {"date": "2013-02-01", "name": "Duel Terminal 7b"}, "DUEA": {"date": "2014-09-11", "name": "Duelist Alliance: Deluxe Edition"}, "DL13": {"date": "2011-12-01", "name": "Duelist League 13 participation cards"}, "DL14": {"date": "2012-06-01", "name": "Duelist League 14 participation cards"}, "DL15": {"date": "2012-12-15", "name": "Duelist League 15 participation cards"}, "DL16": {"date": "2013-07-01", "name": "Duelist League 16 participation cards"}, "DL17": {"date": "2013-12-13", "name": "Duelist League 17 participation cards"}, "DL18": {"date": "2014-06-27", "name": "Duelist League 18 participation cards"}, "DL11": {"date": "2010-12-01", "name": "Duelist League 2 participation cards"}, "DL09": {"date": "2009-08-15", "name": "Duelist League 2010 participation cards"}, "DL12": {"date": "2011-06-01", "name": "Duelist League 3 participation cards"}, "DLDI": {"date": "2009-08-01", "name": "Duelist League Demo 2010"}, "DL1": {"date": "2003-01-01", "name": "Duelist League Series 1 participation cards"}, "DL10": {"date": "2006-04-28", "name": "Duelist League Series 10 participation card"}, "DL2": {"date": "2006-04-28", "name": "Duelist League Series 2 participation cards"}, "DL3": {"date": "2006-04-28", "name": "Duelist League Series 3 participation card"}, "DL4": {"date": "2006-04-28", "name": "Duelist League Series 4 participation card"}, "DL5": {"date": "2006-04-28", "name": "Duelist League Series 5 participation card"}, "DL6": {"date": "2004-12-01", "name": "Duelist League Series 6 participation card"}, "DL7": {"date": "2005-04-01", "name": "Duelist League Series 7 participation card"}, "DL8": {"date": "2005-06-30", "name": "Duelist League Series 8 participation card"}, "DL9": {"date": "2006-01-03", "name": "Duelist League Series 9 participation card"}, "DUNE": {"date": "2023-07-27", "name": "Duelist Nexus"}, "DPCT": {"date": "2008-03-23", "name": "Duelist Pack Collection Tin: Jaden Yuki"}, "RGBT": {"date": "2009-06-23", "name": "Raging Battle: Special Edition"}, "DP05": {"date": "2007-02-07", "name": "Duelist Pack: Aster Phoenix"}, "DPBC": {"date": "2015-06-19", "name": "Duelist Pack: Battle City"}, "DP2": {"date": "2006-02-08", "name": "Duelist Pack: Chazz Princeton"}, "DP11": {"date": "2011-05-27", "name": "Duelist Pack: Crow"}, "DPDG": {"date": "2017-05-25", "name": "Duelist Pack: Dimensional Guardians"}, "DP1": {"date": "2006-02-08", "name": "Duelist Pack: Jaden Yuki"}, "DP03": {"date": "2007-02-07", "name": "Duelist Pack: Jaden Yuki 2"}, "DP06": {"date": "2008-01-26", "name": "Duelist Pack: Jaden Yuki 3"}, "DP07": {"date": "2008-01-26", "name": "Duelist Pack: Jesse Anderson"}, "DPKB": {"date": "2010-04-16", "name": "Duelist Pack: Kaiba"}, "DPRP": {"date": "2016-09-15", "name": "Duelist Pack: Rivals of the Pharaoh"}, "DPK": {"date": "2006-03-09", "name": "Duelist Pack: Special Edition"}, "DPYG": {"date": "2009-07-07", "name": "Duelist Pack: Yugi"}, "DP08": {"date": "2009-02-24", "name": "Duelist Pack: Yusei"}, "DP09": {"date": "2010-01-15", "name": "Duelist Pack: Yusei 2"}, "DP10": {"date": "2011-01-21", "name": "Duelist Pack: Yusei 3"}, "DP04": {"date": "2007-03-07", "name": "Duelist Pack: Zane Truesdale"}, "DREV": {"date": "2010-09-21", "name": "Duelist Revolution: Special Edition"}, "DUSA": {"date": "2017-03-30", "name": "Duelist Saga"}, "DUAD": {"date": "2025-07-03", "name": "Duelist's Advance"}, "EGO1": {"date": "2021-06-17", "name": "Egyptian God Deck: Obelisk the Tormentor"}, "EGS1": {"date": "2021-06-17", "name": "Egyptian God Deck: Slifer the Sky Dragon"}, "EEN": {"date": "2005-11-30", "name": "Elemental Energy: Special Edition"}, "SR01": {"date": "2016-01-28", "name": "Emperor of Darkness Structure Deck"}, "EOJ": {"date": "2006-05-17", "name": "Enemy of Justice"}, "SP2": {"date": "2006-02-18", "name": "Shadow of Infinity Sneak Peek Participation Card"}, "ETCO": {"date": "2020-04-25", "name": "Eternity Code Premiere! promotional card"}, "EVSD": {"date": "2019-08-17", "name": "Speed Duel: Scars of Battle Launch Event participation card"}, "EP1": {"date": "2004-05-15", "name": "Kids WB Duel of Destiny promotional card"}, "EXFO": {"date": "2018-03-22", "name": "Extreme Force Special Edition"}, "EXVC": {"date": "2011-04-30", "name": "Extreme Victory Sneak Peek Participation Card"}, "FFSE": {"date": "2014-04-04", "name": "Fire Fists: Special Edition"}, "FIGA": {"date": "2019-08-22", "name": "Fists of the Gadgets"}, "FLOD": {"date": "2018-06-07", "name": "Flames of Destruction Special Edition"}, "FET": {"date": "2005-03-01", "name": "Flaming Eternity"}, "FL1": {"date": "2005-10-01", "name": "Forbidden Legacy"}, "FOTB": {"date": "2007-06-25", "name": "Force of the Breaker: Special Edition"}, "FUEN": {"date": "2017-02-23", "name": "Fusion Enforcers"}, "GAOV": {"date": "2012-04-28", "name": "Galactic Overlord Sneak Peek Participation Card"}, "SDGU": {"date": "2011-10-13", "name": "Gates of the Underworld Structure Deck"}, "SDGR": {"date": "2014-10-16", "name": "Geargia Rampage Structure Deck"}, "GENF": {"date": "2011-09-15", "name": "Generation Force: Special Edition"}, "GEIM": {"date": "2020-12-03", "name": "Genesis Impact"}, "GFTP": {"date": "2021-04-15", "name": "Ghosts From the Past"}, "GFP2": {"date": "2022-05-05", "name": "Ghosts From the Past: The 2nd Haunting"}, "GLAS": {"date": "2007-12-12", "name": "Gladiator's Assault: Special Edition"}, "GLD1": {"date": "2008-04-02", "name": "Gold Series"}, "GLD2": {"date": "2009-04-21", "name": "Gold Series 2009"}, "GLD3": {"date": "2010-06-18", "name": "Gold Series 3"}, "GLD4": {"date": "2011-06-24", "name": "Gold Series 4: Pyramids Edition"}, "GLD5": {"date": "2012-06-07", "name": "Gold Series: Haunted Mine"}, "GXNG": {"date": "2007-11-03", "name": "GX Next Generation"}, "SDHS": {"date": "2015-01-29", "name": "HERO Strike Structure Deck"}, "HA01": {"date": "2009-11-05", "name": "Hidden Arsenal"}, "HA02": {"date": "2010-07-15", "name": "Hidden Arsenal 2"}, "HA03": {"date": "2010-12-02", "name": "Hidden Arsenal 3"}, "HA04": {"date": "2011-04-15", "name": "Hidden Arsenal 4: Trishula's Triumph"}, "HA05": {"date": "2011-12-01", "name": "Hidden Arsenal 5: Steelswarm Invasion"}, "H5SE": {"date": "2012-03-30", "name": "Hidden Arsenal 5: Steelswarm Invasion: Special Edition"}, "HA06": {"date": "2012-07-24", "name": "Hidden Arsenal 6: Omega Xyz"}, "HA07": {"date": "2013-04-26", "name": "Hidden Arsenal 7: Knight of Stars"}, "HAC1": {"date": "2022-02-24", "name": "Hidden Arsenal: Chapter 1"}, "HASE": {"date": "2011-07-22", "name": "Hidden Arsenal: Special Edition"}, "HISU": {"date": "2018-11-15", "name": "Hidden Summoners"}, "HSRD": {"date": "2015-10-01", "name": "High-Speed Riders"}, "HL1": {"date": "2005-01-01", "name": "Hobby League 1 participation cards C"}, "HL2": {"date": "2006-01-01", "name": "Hobby League 2 participation card F"}, "HL03": {"date": "2006-01-01", "name": "Hobby League 3 participation card G"}, "HL04": {"date": "2007-01-01", "name": "Hobby League 4 participation card F"}, "HL05": {"date": "2007-01-01", "name": "Hobby League 5 participation card F"}, "HL06": {"date": "2008-01-01", "name": "Hobby League 6 participation card F"}, "HL07": {"date": "2008-01-01", "name": "Hobby League 7 participation card F"}, "IGAS": {"date": "2020-03-05", "name": "Ignition Assault Special Edition"}, "IOC": {"date": "2004-04-01", "name": "Invasion of Chaos: Special Edition"}, "INOV": {"date": "2016-12-08", "name": "Invasion: Vengeance: Special Edition"}, "JOTL": {"date": "2013-09-27", "name": "Judgment of the Light: Deluxe Edition"}, "JUSH": {"date": "2025-07-31", "name": "Justice Hunters"}, "KACB": {"date": "2018-03-29", "name": "Yugi & Kaiba Collector Box"}, "2021": {"date": "2021-08-28", "name": "KC Grand Tournament 2021 prize card"}, "2020": {"date": "2020-08-29", "name": "KC Grand Tournament prize card"}, "KICO": {"date": "2021-07-08", "name": "King's Court"}, "LON": {"date": "2003-03-01", "name": "Labyrinth of Nightmare"}, "LOD": {"date": "2003-06-06", "name": "Legacy of Darkness"}, "LEDE": {"date": "2024-04-25", "name": "Legacy of Destruction"}, "LVAL": {"date": "2014-03-07", "name": "Legacy of the Valiant: Deluxe Edition"}, "LOB": {"date": "2002-03-08", "name": "Legend of Blue Eyes White Dragon"}, "L5DD": {"date": "2025-11-06", "name": "Legendary 5D&apos;s Decks"}, "LC01": {"date": "2023-04-20", "name": "Legendary Collection: 25th Anniversary Edition"}, "LC02": {"date": "2011-10-04", "name": "Legendary Collection 2: The Duel Academy Years"}, "LCGX": {"date": "2011-10-04", "name": "Legendary Collection 2: The Duel Academy Years Mega Pack"}, "LC03": {"date": "2012-09-27", "name": "Legendary Collection 3: Yugi's World"}, "LCYW": {"date": "2012-09-29", "name": "Legendary Collection 3: Yugi's World Mega Pack"}, "LC04": {"date": "2013-10-11", "name": "Legendary Collection 4: Joey's World"}, "LCJW": {"date": "2013-10-11", "name": "Legendary Collection 4: Joey's World Mega Pack"}, "LC05": {"date": "2014-10-23", "name": "Legendary Collection 5D's"}, "LC5D": {"date": "2014-10-23", "name": "Legendary Collection 5D's Mega Pack"}, "LC06": {"date": "2018-03-08", "name": "Legendary Collection Kaiba"}, "LCKC": {"date": "2018-03-08", "name": "Legendary Collection Kaiba Mega Pack"}, "LDK2": {"date": "2016-10-06", "name": "Legendary Decks II"}, "LEDD": {"date": "2017-10-05", "name": "Legendary Dragon Decks"}, "LEDU": {"date": "2017-09-07", "name": "Legendary Duelists"}, "LED2": {"date": "2018-02-22", "name": "Legendary Duelists: Ancient Millennium"}, "LED9": {"date": "2022-06-16", "name": "Legendary Duelists: Duels From the Deep"}, "LED5": {"date": "2019-09-26", "name": "Legendary Duelists: Immortal Destiny"}, "LED6": {"date": "2020-01-16", "name": "Legendary Duelists: Magical Hero"}, "LED7": {"date": "2020-09-24", "name": "Legendary Duelists: Rage of Ra"}, "LDS1": {"date": "2020-07-02", "name": "Legendary Duelists: Season 1"}, "LDS2": {"date": "2021-01-21", "name": "Legendary Duelists: Season 2"}, "LDS3": {"date": "2022-07-21", "name": "Legendary Duelists: Season 3"}, "LED4": {"date": "2019-01-10", "name": "Legendary Duelists: Sisters of the Rose"}, "LD10": {"date": "2023-08-10", "name": "Legendary Duelists: Soulburning Volcano"}, "LED8": {"date": "2021-10-28", "name": "Legendary Duelists: Synchro Storm"}, "LED3": {"date": "2018-09-27", "name": "Legendary Duelists: White Dragon Abyss"}, "LEHD": {"date": "2018-10-04", "name": "Legendary Hero Decks"}, "L26D": {"date": "2026-04-23", "name": "Legendary Modern Decks 2026"}, "LDPP": {"date": "2007-11-14", "name": "Light and Darkness Power Pack"}, "LODT": {"date": "2008-06-18", "name": "Light of Destruction: Special Edition"}, "LIOV": {"date": "2021-05-29", "name": "Lightning Overdrive Premiere! promotional card"}, "JUMP": {"date": "2013-10-24", "name": "Weekly Shonen Jump September 2013 membership promotional card"}, "25LP": {"date": "2025-08-30", "name": "WCS 2025 Limited Pack"}, "LTGY": {"date": "2013-05-11", "name": "Lord of the Tachyon Galaxy Sneak Peek Participation Card"}, "SDLS": {"date": "2011-06-10", "name": "Lost Sanctuary Structure Deck"}, "SDMM": {"date": "2010-02-19", "name": "Machina Mayhem Structure Deck"}, "SR03": {"date": "2017-04-13", "name": "Machine Reactor Structure Deck"}, "MRL": {"date": "2002-09-16", "name": "Magic Ruler"}, "MFC": {"date": "2003-10-10", "name": "Magician's Force"}, "MAMA": {"date": "2022-11-03", "name": "Magnificent Mavens"}, "MAMO": {"date": "2026-09-04", "name": "Magnificent Monsters"}, "TYL": {"date": "2005-08-05", "name": "Make-A-Wish Foundation promotional card"}, "MC1": {"date": "2004-12-01", "name": "Master Collection Volume 1"}, "MC2": {"date": "2005-10-18", "name": "Master Collection Volume 2"}, "SDMP": {"date": "2015-12-03", "name": "Master of Pendulum Structure Deck"}, "MF01": {"date": "2006-01-01", "name": "Mattel Action Figure promotional cards: Series 1"}, "MF02": {"date": "2006-01-01", "name": "Mattel Action Figure promotional cards: Series 2"}, "MF03": {"date": "2006-01-01", "name": "Mattel Action Figure promotional cards: Series 3"}, "MACR": {"date": "2017-06-08", "name": "Maximum Crisis: Special Edition"}, "MAGO": {"date": "2020-11-12", "name": "Maximum Gold"}, "MGED": {"date": "2021-11-18", "name": "Maximum Gold: El Dorado"}, "MAZE": {"date": "2023-03-09", "name": "Maze of Memories"}, "MZMI": {"date": "2024-01-18", "name": "Maze of Millennia"}, "MZMU": {"date": "2026-02-19", "name": "Maze of Muertos"}, "MZTM": {"date": "2025-03-13", "name": "Maze of the Master"}, "MP1": {"date": "2002-12-20", "name": "McDonald's Promotional Cards"}, "MDP2": {"date": "2006-12-22", "name": "McDonald's Promotional Cards 2"}, "MRD": {"date": "2002-06-26", "name": "Metal Raiders"}, "MIL1": {"date": "2016-04-14", "name": "Millennium Pack"}, "MOV": {"date": "2004-08-13", "name": "Movie Pack"}, "MYFI": {"date": "2019-11-22", "name": "Mystic Fighters"}, "NKRT": {"date": "2014-11-20", "name": "Noble Knights of the Round Table Power-Up Pack"}, "NUMH": {"date": "2013-07-12", "name": "Number Hunters"}, "SDOK": {"date": "2013-02-08", "name": "Onslaught of the Fire Kings Structure Deck"}, "ORCS": {"date": "2012-03-02", "name": "Order of Chaos: Special Edition"}, "OP01": {"date": "2016-03-18", "name": "OTS Tournament Pack 1"}, "OP10": {"date": "2019-04-18", "name": "OTS Tournament Pack 10 (POR)"}, "OP11": {"date": "2019-08-15", "name": "OTS Tournament Pack 11 (POR)"}, "OP12": {"date": "2019-12-05", "name": "OTS Tournament Pack 12 (POR)"}, "OP13": {"date": "2020-06-15", "name": "OTS Tournament Pack 13 (POR)"}, "OP14": {"date": "2020-10-08", "name": "OTS Tournament Pack 14 (POR)"}, "OP15": {"date": "2021-02-18", "name": "OTS Tournament Pack 15 (POR)"}, "OP16": {"date": "2021-06-09", "name": "OTS Tournament Pack 16 (POR)"}, "OP17": {"date": "2021-10-14", "name": "OTS Tournament Pack 17 (POR)"}, "OP18": {"date": "2022-02-17", "name": "OTS Tournament Pack 18 (POR)"}, "OP19": {"date": "2022-06-15", "name": "OTS Tournament Pack 19 (POR)"}, "OP02": {"date": "2016-07-15", "name": "OTS Tournament Pack 2"}, "OP20": {"date": "2022-10-20", "name": "OTS Tournament Pack 20"}, "OP21": {"date": "2023-02-09", "name": "OTS Tournament Pack 21"}, "OP22": {"date": "2023-07-19", "name": "OTS Tournament Pack 22"}, "OP23": {"date": "2023-10-25", "name": "OTS Tournament Pack 23"}, "OP24": {"date": "2024-02-14", "name": "OTS Tournament Pack 24"}, "OP25": {"date": "2024-06-12", "name": "OTS Tournament Pack 25"}, "OP26": {"date": "2024-10-17", "name": "OTS Tournament Pack 26"}, "OP27": {"date": "2025-02-27", "name": "OTS Tournament Pack 27"}, "OP28": {"date": "2025-06-18", "name": "OTS Tournament Pack 28"}, "OP29": {"date": "2025-10-15", "name": "OTS Tournament Pack 29"}, "OP03": {"date": "2016-11-17", "name": "OTS Tournament Pack 3"}, "OP30": {"date": "2026-02-12", "name": "OTS Tournament Pack 30"}, "OP04": {"date": "2017-04-06", "name": "OTS Tournament Pack 4"}, "OP05": {"date": "2017-08-03", "name": "OTS Tournament Pack 5"}, "OP06": {"date": "2017-12-07", "name": "OTS Tournament Pack 6"}, "OP07": {"date": "2018-04-13", "name": "OTS Tournament Pack 7 (POR)"}, "OP08": {"date": "2018-08-17", "name": "OTS Tournament Pack 8 (POR)"}, "OP09": {"date": "2018-12-06", "name": "OTS Tournament Pack 9 (POR)"}, "SDPD": {"date": "2017-01-19", "name": "Pendulum Domination Structure Deck"}, "PEVO": {"date": "2017-06-22", "name": "Pendulum Evolution"}, "PTDN": {"date": "2008-03-12", "name": "Phantom Darkness: Special Edition"}, "PHNI": {"date": "2024-02-08", "name": "Phantom Nightmare"}, "PHRA": {"date": "2020-10-31", "name": "Phantom Rage Premiere! promotional card"}, "PHRE": {"date": "2025-12-04", "name": "Phantom Revenge"}, "PT1": {"date": "2005-12-17", "name": "Pharaoh Tour 2005 promotional cards"}, "PT02": {"date": "2006-10-28", "name": "Pharaoh Tour 2006 promotional cards"}, "PT03": {"date": "2007-10-13", "name": "Pharaoh Tour 2007 promotional cards"}, "PSV": {"date": "2002-10-20", "name": "Pharaoh's Servant"}, "PGD": {"date": "2003-07-18", "name": "Pharaonic Guardian"}, "PHHY": {"date": "2023-02-09", "name": "Photon Hypernova"}, "PHSW": {"date": "2011-11-05", "name": "Photon Shockwave Sneak Peek Participation Card"}, "POTD": {"date": "2006-08-16", "name": "Power of the Duelist"}, "POTE": {"date": "2022-08-04", "name": "Power of the Elements"}, "PRC1": {"date": "2012-03-16", "name": "Premium Collection Tin"}, "PGLD": {"date": "2014-03-28", "name": "Premium Gold"}, "PGL3": {"date": "2016-03-17", "name": "Premium Gold: Infinite Gold"}, "PGL2": {"date": "2015-03-19", "name": "Premium Gold: Return of the Bling"}, "PP01": {"date": "2007-07-26", "name": "Premium Pack (TCG)"}, "PP02": {"date": "2008-07-31", "name": "Premium Pack 2 (TCG)"}, "PRIO": {"date": "2014-06-12", "name": "Primal Origin: Deluxe Edition"}, "RA03": {"date": "2024-11-07", "name": "Quarter Century Bonanza"}, "RA04": {"date": "2025-04-10", "name": "Quarter Century Stampede"}, "RYMP": {"date": "2012-06-12", "name": "Ra Yellow Mega Pack: Special Edition"}, "ROTA": {"date": "2024-10-10", "name": "Rage of the Abyss"}, "RATE": {"date": "2017-03-16", "name": "Raging Tempest: Special Edition"}, "RA05": {"date": "2026-04-09", "name": "Rarity Collection 5"}, "SDLI": {"date": "2014-06-27", "name": "Realm of Light Structure Deck"}, "SDRE": {"date": "2012-10-11", "name": "Realm of the Sea Emperor Structure Deck"}, "RP01": {"date": "2008-07-08", "name": "Retro Pack"}, "RP02": {"date": "2009-07-28", "name": "Retro Pack 2"}, "REDU": {"date": "2012-09-21", "name": "Return of the Duelist: Special Edition"}, "RDS": {"date": "2005-02-01", "name": "Rise of Destiny: Special Edition"}, "SDRL": {"date": "2007-10-24", "name": "Rise of the Dragon Lords Structure Deck"}, "ROTD": {"date": "2020-08-01", "name": "Rise of the Duelist Premiere! promotional card"}, "SR02": {"date": "2016-07-07", "name": "Rise of the True Dragons Structure Deck"}, "RIRA": {"date": "2019-09-12", "name": "Rising Rampage Special Edition"}, "SDBE": {"date": "2013-09-12", "name": "Saga of Blue-Eyes White Dragon Structure Deck"}, "SAAS": {"date": "2011-12-06", "name": "Samurai Assault"}, "SDWA": {"date": "2012-06-21", "name": "Samurai Warlords Structure Deck"}, "TKN1": {"date": "2006-07-20", "name": "San Diego Comic-Con promotional cards"}, "SAST": {"date": "2019-03-07", "name": "Savage Strike Special Edition"}, "SESL": {"date": "2020-04-03", "name": "Secret Slayers"}, "SECE": {"date": "2015-02-26", "name": "Secrets of Eternity: Super Edition"}, "SOI": {"date": "2006-04-01", "name": "Shadow of Infinity: Special Edition"}, "SHSP": {"date": "2013-12-13", "name": "Shadow Specters: Special Edition"}, "SHVA": {"date": "2018-08-16", "name": "Shadows in Valhalla"}, "SHVI": {"date": "2016-06-16", "name": "Shining Victories: Special Edition"}, "SJC": {"date": "2006-05-06", "name": "Shonen Jump Championship 2006 Prize Card"}, "SJCS": {"date": "2009-04-26", "name": "Shonen Jump Championship 2009 Prize Card"}, "JMPS": {"date": "2019-01-01", "name": "WSJ Jump Pack Spring 2019 promotional card"}, "JMP": {"date": "2010-01-05", "name": "Ultimate Edition"}, "SOFU": {"date": "2018-12-06", "name": "Soul Fusion Special Edition"}, "SOD": {"date": "2004-10-01", "name": "Soul of the Duelist"}, "YS14": {"date": "2014-07-10", "name": "Super Starter: Space-Time Showdown"}, "DEM5": {"date": "2019-06-08", "name": "Speed Duel Demo Deck"}, "DEM6": {"date": "2020-01-01", "name": "Speed Duel Demo Deck 2020"}, "SGX1": {"date": "2022-03-17", "name": "Speed Duel GX: Duel Academy Box"}, "SGX3": {"date": "2023-03-30", "name": "Speed Duel GX: Duelists of Shadows"}, "SGX2": {"date": "2022-10-06", "name": "Speed Duel GX: Midterm Paradox"}, "SS01": {"date": "2019-01-24", "name": "Speed Duel Starter Decks: Destiny Masters"}, "SS02": {"date": "2019-01-24", "name": "Speed Duel Starter Decks: Duelists of Tomorrow"}, "SS04": {"date": "2020-05-15", "name": "Speed Duel Starter Decks: Match of the Millennium"}, "SS05": {"date": "2020-05-15", "name": "Speed Duel Starter Decks: Twisted Nightmares"}, "SS03": {"date": "2019-08-01", "name": "Speed Duel Starter Decks: Ultimate Predators"}, "STP1": {"date": "2019-04-18", "name": "Speed Duel Tournament Pack 1"}, "STP2": {"date": "2019-10-10", "name": "Speed Duel Tournament Pack 2"}, "STP3": {"date": "2022-03-24", "name": "Speed Duel Tournament Pack 3"}, "STP4": {"date": "2022-09-29", "name": "Speed Duel Tournament Pack 4"}, "STP5": {"date": "2023-03-09", "name": "Speed Duel Tournament Pack 5"}, "STP6": {"date": "2023-09-06", "name": "Speed Duel Tournament Pack 6"}, "SBLS": {"date": "2019-03-28", "name": "Speed Duel: Arena of Lost Souls"}, "SBAD": {"date": "2019-05-30", "name": "Speed Duel: Attack from the Deep"}, "SBCB": {"date": "2020-11-26", "name": "Speed Duel: Battle City Box"}, "SBSC": {"date": "2019-08-01", "name": "Speed Duel: Scars of Battle"}, "SBC1": {"date": "2023-08-24", "name": "Speed Duel: Streets of Battle City"}, "SBTK": {"date": "2019-11-30", "name": "Speed Duel: Trials of the Kingdom Sneak Peek participation cards"}, "SRL": {"date": "2002-09-16", "name": "Spell Ruler"}, "SDSC": {"date": "2009-03-31", "name": "Spellcaster's Command Structure Deck: Special Edition"}, "SPWA": {"date": "2017-11-16", "name": "Spirit Warriors"}, "SP13": {"date": "2013-03-01", "name": "Star Pack 2013"}, "SP14": {"date": "2014-02-21", "name": "Star Pack 2014"}, "SP15": {"date": "2015-06-12", "name": "Star Pack ARC-V"}, "SP17": {"date": "2017-03-09", "name": "Star Pack Battle Royal"}, "SP18": {"date": "2018-03-29", "name": "Star Pack VRAINS"}, "SOVR": {"date": "2009-12-11", "name": "Stardust Overdrive: Special Edition"}, "STBL": {"date": "2010-11-06", "name": "Starstrike Blast Sneak Peek Participation Card"}, "YSD": {"date": "2006-03-01", "name": "Starter Deck 2006: Special Edition"}, "YS18": {"date": "2018-07-12", "name": "Starter Deck: Codebreaker"}, "YS11": {"date": "2011-07-08", "name": "Starter Deck: Dawn of the Xyz"}, "5DS3": {"date": "2010-05-28", "name": "Starter Deck: Duelist Toolbox"}, "YSDJ": {"date": "2007-07-25", "name": "Starter Deck: Jaden Yuki"}, "SDJ": {"date": "2003-03-30", "name": "Starter Deck: Joey"}, "SDK": {"date": "2002-03-29", "name": "Starter Deck: Kaiba"}, "SKE": {"date": "2004-03-01", "name": "Starter Deck: Kaiba Evolution"}, "YSKR": {"date": "2013-12-06", "name": "Starter Deck: Kaiba Reloaded"}, "YS17": {"date": "2017-07-20", "name": "Starter Deck: Link Strike"}, "SDP": {"date": "2003-03-30", "name": "Starter Deck: Pegasus"}, "YSDS": {"date": "2007-07-25", "name": "Starter Deck: Syrus Truesdale"}, "YS12": {"date": "2012-04-13", "name": "Starter Deck: Xyz Symphony"}, "5DS1": {"date": "2008-08-05", "name": "Starter Deck: Yu-Gi-Oh! 5D's"}, "5DS2": {"date": "2009-06-09", "name": "Starter Deck: Yu-Gi-Oh! 5D's 2009"}, "SDY": {"date": "2001-01-01", "name": "Summoned Skull Sample promotional card"}, "SYE": {"date": "2004-03-01", "name": "Starter Deck: Yugi Evolution"}, "YSYR": {"date": "2013-12-06", "name": "Starter Deck: Yugi Reloaded"}, "YS16": {"date": "2016-05-26", "name": "Starter Deck: Yuya"}, "STOR": {"date": "2011-03-22", "name": "Storm of Ragnarok: Special Edition"}, "STON": {"date": "2007-03-14", "name": "Strike of Neos: Special Edition"}, "SDAZ": {"date": "2022-04-14", "name": "Structure Deck: Albaz Strike"}, "SDBT": {"date": "2023-02-23", "name": "Structure Deck: Beware of Traptrix"}, "SD3": {"date": "2005-05-09", "name": "Structure Deck: Blaze of Destruction"}, "SDWD": {"date": "2025-02-13", "name": "Structure Deck: Blue-Eyes White Destiny"}, "SDCS": {"date": "2021-10-14", "name": "Structure Deck: Cyber Strike"}, "SDCL": {"date": "2017-11-02", "name": "Structure Deck: Cyberse Link"}, "SR13": {"date": "2022-12-01", "name": "Structure Deck: Dark World"}, "SD1": {"date": "2005-01-01", "name": "Structure Deck: Dragon's Roar"}, "SD09": {"date": "2006-10-25", "name": "Structure Deck: Dinosaur's Rage Special Set"}, "SR14": {"date": "2023-12-07", "name": "Structure Deck: Fire Kings"}, "SDFC": {"date": "2021-02-18", "name": "Structure Deck: Freezing Chains"}, "SD4": {"date": "2005-05-09", "name": "Structure Deck: Fury from the Deep"}, "SD7": {"date": "2006-05-15", "name": "Structure Deck: Invincible Fortress"}, "SR06": {"date": "2018-04-19", "name": "Structure Deck: Lair of Darkness"}, "SDCB": {"date": "2022-09-29", "name": "Structure Deck: Legend of the Crystal Beasts"}, "SD8": {"date": "2006-07-12", "name": "Structure Deck: Lord of the Storm"}, "SD10": {"date": "2007-01-17", "name": "Structure Deck: Machine Re-Volt"}, "SDMA": {"date": "2010-10-15", "name": "Structure Deck: Marik (TCG)"}, "SR10": {"date": "2020-04-16", "name": "Structure Deck: Mechanized Madness"}, "SR08": {"date": "2019-04-19", "name": "Structure Deck: Order of the Spellcasters"}, "SDPL": {"date": "2018-08-09", "name": "Structure Deck: Powercode Link"}, "SDRR": {"date": "2019-08-15", "name": "Structure Deck: Rokket Revolt"}, "SDSA": {"date": "2020-07-09", "name": "Structure Deck: Sacred Beasts"}, "SDKS": {"date": "2016-10-20", "name": "Structure Deck: Seto Kaiba"}, "SDSH": {"date": "2020-02-13", "name": "Structure Deck: Shaddoll Showdown"}, "SDSB": {"date": "2019-02-14", "name": "Structure Deck: Soulburner"}, "SD6": {"date": "2006-01-18", "name": "Structure Deck: Spellcaster's Judgment"}, "SDCH": {"date": "2020-10-22", "name": "Structure Deck: Spirit Charmers"}, "SDCK": {"date": "2023-09-21", "name": "Structure Deck: The Crimson King"}, "SD5": {"date": "2005-10-28", "name": "Structure Deck: Warrior's Triumph"}, "SR05": {"date": "2018-01-18", "name": "Structure Deck: Wave of Light"}, "SDMY": {"date": "2016-10-20", "name": "Structure Deck: Yugi Muto"}, "SR07": {"date": "2018-11-01", "name": "Structure Deck: Zombie Horde"}, "SD2": {"date": "2005-01-01", "name": "Structure Deck: Zombie Madness"}, "YS13": {"date": "2013-06-14", "name": "Super Starter: V for Victory"}, "SUDA": {"date": "2025-01-23", "name": "Supreme Darkness"}, "SDSE": {"date": "2015-08-27", "name": "Synchron Extreme Structure Deck"}, "TAEV": {"date": "2007-09-12", "name": "Tactical Evolution: Special Edition"}, "TAMA": {"date": "2022-08-25", "name": "Tactical Masters"}, "CH02": {"date": "2026-01-22", "name": "THE CHRONICLES DECK: Spirit Charmers (All-Foil Edition)"}, "CH01": {"date": "2025-10-24", "name": "THE CHRONICLES DECK: The Fallen & The Virtuous (All-Foil Edition)"}, "SDDE": {"date": "2008-04-02", "name": "The Dark Emperor Structure Deck"}, "TDIL": {"date": "2016-09-15", "name": "The Dark Illusion: Special Edition"}, "TDGS": {"date": "2008-10-07", "name": "The Duelist Genesis: Special Edition"}, "GRCR": {"date": "2022-01-27", "name": "The Grand Creators"}, "INFO": {"date": "2024-07-18", "name": "The Infinite Forbidden"}, "INCH": {"date": "2019-03-21", "name": "The Infinity Chasers"}, "LART": {"date": "2020-03-01", "name": "The Lost Art Promotion O"}, "TLM": {"date": "2005-06-10", "name": "The Lost Millennium: Special Edition"}, "NECH": {"date": "2014-12-04", "name": "The New Challengers: Super Edition"}, "TBC1": {"date": "2023-09-01", "name": "The Pot Collection"}, "THSF": {"date": "2015-02-12", "name": "The Secret Forces"}, "TSHD": {"date": "2010-05-01", "name": "The Shining Darkness Sneak Peek Participation Card"}, "TOCH": {"date": "2020-06-18", "name": "Toon Chaos"}, "TP4": {"date": "2003-10-01", "name": "Tournament Pack 4"}, "TP5": {"date": "2004-11-01", "name": "Tournament Pack 5"}, "TP6": {"date": "2005-06-01", "name": "Tournament Pack 6"}, "TP7": {"date": "2005-11-01", "name": "Tournament Pack 7"}, "TP8": {"date": "2006-04-28", "name": "Tournament Pack 8"}, "TP1": {"date": "2002-09-01", "name": "Tournament Pack: 1st Season"}, "TP2": {"date": "2002-10-01", "name": "Tournament Pack: 2nd Season"}, "TP3": {"date": "2003-03-01", "name": "Tournament Pack: 3rd Season"}, "OPTP": {"date": "2020-01-01", "name": "Trials of the Pharaoh - Trials of the Kingdom promotional card"}, "TU08": {"date": "2012-06-01", "name": "Turbo Pack: Booster Eight"}, "TU05": {"date": "2011-04-09", "name": "Turbo Pack: Booster Five"}, "TU04": {"date": "2010-11-13", "name": "Turbo Pack: Booster Four"}, "TU01": {"date": "2009-08-15", "name": "Turbo Pack: Booster One"}, "TU07": {"date": "2012-01-01", "name": "Turbo Pack: Booster Seven"}, "TU06": {"date": "2011-08-04", "name": "Turbo Pack: Booster Six"}, "TU03": {"date": "2010-07-10", "name": "Turbo Pack: Booster Three"}, "TU02": {"date": "2010-01-09", "name": "Turbo Pack: Booster Two"}, "TWED": {"date": "2010-01-05", "name": "Twilight Edition"}, "UE02": {"date": "2006-11-11", "name": "Ultimate Edition 2"}, "VASM": {"date": "2023-11-16", "name": "Valiant Smashers"}, "WGRT": {"date": "2014-01-17", "name": "War of the Giants Reinforcements"}, "BPW2": {"date": "2014-01-17", "name": "War of the Giants: Round 2"}, "SDWS": {"date": "2009-10-23", "name": "Warriors' Strike Structure Deck"}, "WISU": {"date": "2023-06-01", "name": "Wild Survivors"}, "WIRA": {"date": "2016-02-11", "name": "Wing Raiders"}, "WCPP": {"date": "2010-08-14", "name": "World Championship 2010 Card Pack"}, "WP11": {"date": "2011-08-01", "name": "World Championship 2011 Card Pack"}, "WSUP": {"date": "2015-04-16", "name": "World Superstars"}, "XSPU": {"date": "2010-11-23", "name": "X-Saber Power-Up"}, "MOV2": {"date": "2011-02-22", "name": "Yu-Gi-Oh! 3D Bonds Beyond Time Theater distribution card"}, "YMP1": {"date": "2011-02-22", "name": "Yu-Gi-Oh! 3D Bonds Beyond Time Movie Pack"}, "YDT1": {"date": "2010-12-07", "name": "Yu-Gi-Oh! 5D's Duel Transer promotional cards"}, "WC09": {"date": "2009-05-19", "name": "Yu-Gi-Oh! 5D's World Championship 2009: Stardust Accelerator promotional cards"}, "TF04": {"date": "2009-11-17", "name": "Yu-Gi-Oh! 5D's Tag Force 4 promotional cards"}, "TF05": {"date": "2010-10-26", "name": "Yu-Gi-Oh! 5D's Tag Force 5 promotional cards"}, "YF01": {"date": "2011-07-06", "name": "Yu-Gi-Oh! 5D's Volume 1 promotional card"}, "YF02": {"date": "2012-02-07", "name": "Yu-Gi-Oh! 5D's Volume 2 promotional card"}, "YF03": {"date": "2012-10-02", "name": "Yu-Gi-Oh! 5D's Volume 3 promotional card"}, "YF04": {"date": "2013-04-02", "name": "Yu-Gi-Oh! 5D's Volume 4 promotional card"}, "YF05": {"date": "2013-11-05", "name": "Yu-Gi-Oh! 5D's Volume 5 promotional card"}, "YF06": {"date": "2014-09-02", "name": "Yu-Gi-Oh! 5D's Volume 6 promotional card"}, "YF07": {"date": "2015-03-03", "name": "Yu-Gi-Oh! 5D's Volume 7 promotional card"}, "YF08": {"date": "2015-10-06", "name": "Yu-Gi-Oh! 5D's volume 8 promotional card"}, "YF09": {"date": "2016-04-05", "name": "Yu-Gi-Oh! 5D's Volume 9 promotional card"}, "WB01": {"date": "2009-05-19", "name": "Yu-Gi-Oh! 5D's Wheelie Breakers Promotional Cards"}, "WC10": {"date": "2010-02-23", "name": "Yu-Gi-Oh! 5D's World Championship 2010: Reverse of Arcadia promotional cards"}, "WC11": {"date": "2011-05-10", "name": "Yu-Gi-Oh! 5D's World Championship 2011: Over the Nexus promotional cards"}, "WC5": {"date": "2005-02-15", "name": "Yu-Gi-Oh! 7 Trials to Glory: World Championship Tournament 2005 promotional cards"}, "AC19": {"date": "2019-09-26", "name": "Yu-Gi-Oh! Advent Calendar (2019)"}, "AC18": {"date": "2018-10-25", "name": "Yu-Gi-Oh! Advent Calendar (2018)"}, "YA01": {"date": "2017-04-04", "name": "Yu-Gi-Oh! ARC-V Volume 1 promotional card"}, "YA02": {"date": "2017-09-05", "name": "Yu-Gi-Oh! ARC-V Volume 2 promotional card"}, "YA03": {"date": "2018-03-06", "name": "Yu-Gi-Oh! ARC-V Volume 3 promotional card"}, "YA04": {"date": "2018-11-06", "name": "Yu-Gi-Oh! ARC-V Volume 4 promotional card"}, "YA05": {"date": "2019-03-05", "name": "Yu-Gi-Oh! ARC-V Volume 5 promotional card"}, "YA06": {"date": "2019-09-03", "name": "Yu-Gi-Oh! ARC-V Volume 6 promotional card"}, "YA07": {"date": "2020-06-02", "name": "Yu-Gi-Oh! ARC-V Volume 7 promotional card"}, "CMC": {"date": "2004-11-26", "name": "Yu-Gi-Oh! Capsule Monster Coliseum promotional cards"}, "YCSW": {"date": "2023-10-01", "name": "Yu-Gi-Oh! Championship Series 2023 prize card"}, "DDS": {"date": "2002-03-19", "name": "Yu-Gi-Oh! Dark Duel Stories promotional cards"}, "YDPR": {"date": "2019-04-06", "name": "Yu-Gi-Oh! Day April 2019 promotional card"}, "DBT": {"date": "2004-10-26", "name": "Yu-Gi-Oh! Destiny Board Traveler promotional cards"}, "ROD": {"date": "2004-06-29", "name": "Yu-Gi-Oh! Reshef of Destruction promotional cards"}, "EHC1": {"date": "2007-11-13", "name": "Yu-Gi-Oh! Elemental Hero Collection 1"}, "EHC2": {"date": "2007-11-13", "name": "Yu-Gi-Oh! Elemental Hero Collection 2"}, "FMR": {"date": "2002-11-25", "name": "Yu-Gi-Oh! Forbidden Memories promotional cards"}, "YDB1": {"date": "2007-11-30", "name": "Yu-Gi-Oh! GX Card Almanac promotional cards"}, "GX1": {"date": "2006-01-10", "name": "Yu-Gi-Oh! GX Duel Academy promotional cards"}, "GSE": {"date": "2006-04-01", "name": "Yu-Gi-Oh! GX Special Edition"}, "GX03": {"date": "2007-01-02", "name": "Yu-Gi-Oh! GX Spirit Caller promotional cards"}, "GX04": {"date": "2007-09-18", "name": "Yu-Gi-Oh! GX Tag Force 2 promotional cards"}, "GX06": {"date": "2008-11-28", "name": "Yu-Gi-Oh! GX Tag Force 3 promotional cards"}, "GX05": {"date": "2007-12-07", "name": "Yu-Gi-Oh! GX Tag Force Evolution promotional cards"}, "GX02": {"date": "2006-11-16", "name": "Yu-Gi-Oh! GX Tag Force promotional cards"}, "UBP1": {"date": "2006-07-19", "name": "Yu-Gi-Oh! GX Ultimate Beginner's Pack"}, "YG01": {"date": "2007-11-06", "name": "Yu-Gi-Oh! GX Volume 1 promotional card"}, "YG02": {"date": "2008-11-04", "name": "Yu-Gi-Oh! GX Volume 2 promotional card"}, "YG03": {"date": "2009-06-02", "name": "Yu-Gi-Oh! GX Volume 3 promotional card"}, "YG04": {"date": "2010-01-05", "name": "Yu-Gi-Oh! GX Volume 4 promotional card"}, "YG05": {"date": "2010-10-05", "name": "Yu-Gi-Oh! GX Volume 5 promotional card"}, "YG06": {"date": "2011-03-01", "name": "Yu-Gi-Oh! GX Volume 6 promotional card"}, "YG07": {"date": "2011-08-18", "name": "Yu-Gi-Oh! GX Volume 7 promotional card"}, "YG08": {"date": "2012-01-03", "name": "Yu-Gi-Oh! GX Volume 8 promotional card"}, "YG09": {"date": "2011-08-07", "name": "Yu-Gi-Oh! GX Volume 9 promotional card"}, "LOD2": {"date": "2019-08-20", "name": "Yu-Gi-Oh! Legacy of the Duelist: Link Evolution promotional cards"}, "NTR": {"date": "2005-08-30", "name": "Yu-Gi-Oh! Nightmare Troubadour promotional cards"}, "PCJ": {"date": "2004-06-29", "name": "Yu-Gi-Oh! Power of Chaos: Joey the Passion promotional cards"}, "PCK": {"date": "2004-04-06", "name": "Yu-Gi-Oh! Power of Chaos: Kaiba the Revenge promotional cards"}, "PCY": {"date": "2003-11-18", "name": "Yu-Gi-Oh! Power of Chaos: Yugi the Destiny promotional cards"}, "YR01": {"date": "2010-02-02", "name": "Yu-Gi-Oh! R Volume 3 promotional card"}, "YR04": {"date": "2010-04-29", "name": "Yu-Gi-Oh! R Volume 4 promotional card"}, "YR05": {"date": "2010-06-02", "name": "Yu-Gi-Oh! R Volume 5 promotional card"}, "21CC": {"date": "2021-05-22", "name": "Yu-Gi-Oh! TCG Remote Duel Extravaganza participation card"}, "MVPC": {"date": "2017-01-27", "name": "Yu-Gi-Oh! The Dark Side of Dimensions Theater distribution cards"}, "MVP1": {"date": "2017-01-12", "name": "Yu-Gi-Oh! The Dark Side of Dimensions Movie Pack: Gold Edition"}, "DOD": {"date": "2004-03-23", "name": "Yu-Gi-Oh! The Dawn of Destiny promotional cards"}, "DOR": {"date": "2003-02-16", "name": "Yu-Gi-Oh! The Duelists of the Roses promotional cards"}, "EDS": {"date": "2002-10-15", "name": "Yu-Gi-Oh! The Eternal Duelist Soul promotional cards"}, "TFK": {"date": "2003-11-04", "name": "Yu-Gi-Oh! The Falsebound Kingdom promotional cards"}, "TSC": {"date": "2003-11-04", "name": "Yu-Gi-Oh! The Sacred Cards promotional cards"}, "EM1": {"date": "2004-06-19", "name": "Yu-Gi-Oh! Trading Card Game Tour 2004 promotional card"}, "WC6": {"date": "2006-03-14", "name": "Yu-Gi-Oh! Ultimate Masters: World Championship Tournament 2006 promotional cards"}, "WCS": {"date": "2005-08-07", "name": "Yu-Gi-Oh! World Championship 2005 prize cards"}, "WCPS": {"date": "2007-07-28", "name": "Yu-Gi-Oh! World Championship 2007 prize cards"}, "WC07": {"date": "2007-03-20", "name": "Yu-Gi-Oh! World Championship 2007 promotional cards"}, "WC08": {"date": "2007-12-04", "name": "Yu-Gi-Oh! World Championship 2008 promotional cards"}, "2017": {"date": "2017-08-13", "name": "Yu-Gi-Oh! World Championship 2017 prize cards"}, "2018": {"date": "2018-08-05", "name": "Yu-Gi-Oh! World Championship 2018 prize cards"}, "2019": {"date": "2019-02-01", "name": "Yu-Gi-Oh! World Championship 2019 Japanese National Qualifiers prize cards"}, "WQ11": {"date": "2011-05-01", "name": "Yu-Gi-Oh! World Championship Qualifier National Championships 2011 prize cards"}, "WC4": {"date": "2004-02-10", "name": "Yu-Gi-Oh! World Championship Tournament 2004 promotional cards"}, "SDD": {"date": "2003-04-15", "name": "Yu-Gi-Oh! Worldwide Edition: Stairway to the Destined Duel promotional cards"}, "YZ01": {"date": "2012-06-05", "name": "Yu-Gi-Oh! ZEXAL Volume 1 promotional card"}, "YZ02": {"date": "2012-12-04", "name": "Yu-Gi-Oh! ZEXAL Volume 2 promotional card"}, "YZ03": {"date": "2013-06-04", "name": "Yu-Gi-Oh! ZEXAL Volume 3 promotional card"}, "YZ04": {"date": "2014-01-07", "name": "Yu-Gi-Oh! ZEXAL Volume 4 promotional card"}, "YZ05": {"date": "2014-07-01", "name": "Yu-Gi-Oh! ZEXAL Volume 5 promotional card"}, "YZ06": {"date": "2015-02-03", "name": "Yu-Gi-Oh! ZEXAL Volume 6 promotional card"}, "YZ07": {"date": "2015-09-01", "name": "Yu-Gi-Oh! ZEXAL Volume 7 promotional card"}, "YZ08": {"date": "2016-03-01", "name": "Yu-Gi-Oh! ZEXAL Volume 8 promotional card"}, "YZ09": {"date": "2016-09-06", "name": "Yu-Gi-Oh! ZEXAL Volume 9 promotional card"}, "ZDC1": {"date": "2014-06-26", "name": "Yu-Gi-Oh! ZEXAL World Duel Carnival promotional cards"}, "YUCB": {"date": "2017-09-15", "name": "Yugi's Collector Box"}, "YGLD": {"date": "2015-11-12", "name": "Yugi's Legendary Decks"}, "ZTIN": {"date": "2013-03-07", "name": "Zexal Collection Tin"}, "SDZW": {"date": "2008-10-21", "name": "Zombie World Structure Deck"}};
+
+    // Load all cards with pagination (misc=1 causes 400 with num/offset)
+    let all = [], offset = 0, num = 500;
+    while (true) {
+      const res = await fetch(`https://db.ygoprodeck.com/api/v7/cardinfo.php?num=${num}&offset=${offset}`);
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const json = await res.json();
+      const batch = json.data || [];
+      all = all.concat(batch);
+      if (batch.length < num) break;
+      offset += num;
+    }
+    ALL = all.map(c => {
+      const es = earliestSet(c.card_sets);
+      return {
+        name:      c.name,
+        type:      getType(c.type || ''),
+        subtype:   c.humanReadableCardType || c.type || '',
+        atk:       c.atk != null ? c.atk : null,
+        def:       c.def != null ? c.def : null,
+        level:     c.level != null ? c.level : null,
+        attribute: c.attribute || '',
+        status:    statusTCG(c.banlist_info),
+        desc:      c.desc || '',
+        img_small: (c.card_images && c.card_images[0]) ? c.card_images[0].image_url_small : '',
+        img:       (c.card_images && c.card_images[0]) ? c.card_images[0].image_url : '',
+        tcg_date:  es.date,
+        set_name:  es.name,
+      };
+    });
+    document.getElementById('loading').style.display = 'none';
+    document.getElementById('table-wrap').style.display = 'block';
+    applyFilters();
+  } catch(e) {
+    document.getElementById('loading').innerHTML = '<span style="color:#e74c3c">Errore: ' + e.message + '</span>';
+  }
+}
+
+function setStatus(s, el) {
+  statusF = s;
+  document.querySelectorAll('.fbtn.f-all,.fbtn.f-forb,.fbtn.f-lim,.fbtn.f-semi,.fbtn.f-unlim')
+    .forEach(b => b.classList.remove('active'));
+  el.classList.add('active'); page = 1; applyFilters();
+}
+function setType(t, el) {
+  typeF = t;
+  // reset type buttons
+  el.closest('#filters').querySelectorAll('.fbtn:not(.f-all):not(.f-forb):not(.f-lim):not(.f-semi):not(.f-unlim)')
+    .forEach(b => b.classList.remove('active'));
+  el.classList.add('active'); page = 1; applyFilters();
+}
+function sortBy(k) {
+  if (sortK === k) sortAsc = !sortAsc; else { sortK = k; sortAsc = true; }
+  applyFilters();
+}
+function applyFilters() {
+  const q = document.getElementById('search-box').value.toLowerCase();
+  filtered = ALL.filter(c => {
+    if (statusF && c.status !== statusF) return false;
+    if (typeF   && c.type   !== typeF)   return false;
+    if (q && !c.name.toLowerCase().includes(q) && !cardNameLang(c.name).toLowerCase().includes(q)) return false;
+    return true;
+  });
+  filtered.sort((a, b) => {
+    let va = a[sortK] ?? '', vb = b[sortK] ?? '';
+    if (['atk','def','level'].includes(sortK)) { va = va===null?-1:va; vb = vb===null?-1:vb; }
+    else { va = String(va).toLowerCase(); vb = String(vb).toLowerCase(); }
+    return sortAsc ? (va<vb?-1:va>vb?1:0) : (va<vb?1:va>vb?-1:0);
+  });
+  document.getElementById('card-count').textContent = filtered.length.toLocaleString('it') + ' carte';
+  renderTable(); renderPagination();
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderTable() {
+  const start = (page - 1) * PAGE;
+  document.getElementById('tbody').innerHTML = filtered.slice(start, start + PAGE).map((c, i) => {
+    const si = start + i;
+    const atk = c.atk !== null ? c.atk : '';
+    const def = c.def !== null ? c.def : '';
+    const lv  = c.level !== null ? c.level : '';
+    return `<tr data-ci="${si}" onclick="openCard(${si})">
+      <td><strong>${esc(cardNameLang(c.name))}</strong></td>
+      <td><span class="badge ${c.status}">${c.status}</span></td>
+      <td><span class="type-b ${c.type}">${c.type}</span></td>
+      <td style="color:#777;font-size:0.78rem">${esc(c.subtype)}</td>
+      <td style="text-align:center;color:#e67e22">${atk}</td>
+      <td style="text-align:center;color:#6699ff">${def}</td>
+      <td style="text-align:center;color:#f0b429">${lv}</td>
+      <td style="color:#88ccff">${esc(c.attribute)}</td>
+      <td style="color:#888;font-size:0.78rem">${c.tcg_date}</td>
+      <td style="color:#777;font-size:0.75rem;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.set_name)}">${esc(c.set_name)}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPagination() {
+  const tot = Math.ceil(filtered.length / PAGE);
+  const p = document.getElementById('pagination');
+  if (tot <= 1) { p.innerHTML = ''; return; }
+  let h = `<button ${page===1?'disabled':''} onclick="goPage(${page-1})">&#8249;</button>`;
+  const range = [];
+  for (let i = 1; i <= tot; i++) {
+    if (i===1||i===tot||(i>=page-2&&i<=page+2)) range.push(i);
+    else if (range[range.length-1]!=='...') range.push('...');
+  }
+  range.forEach(r => {
+    if (r==='...') h += '<span style="color:#555;padding:0 6px">…</span>';
+    else h += `<button class="${r===page?'pactive':''}" onclick="goPage(${r})">${r}</button>`;
+  });
+  h += `<button ${page===tot?'disabled':''} onclick="goPage(${page+1})">&#8250;</button>`;
+  p.innerHTML = h;
+}
+
+function goPage(n) {
+  const tot = Math.ceil(filtered.length / PAGE);
+  if (n < 1 || n > tot) return;
+  page = n; renderTable(); renderPagination();
+  document.getElementById('table-wrap').scrollTo({top: 0, behavior: 'smooth'});
+}
+
+function openCard(idx) {
+  const c = filtered[idx];
+  const imgDiv = document.getElementById('popup-img');
+  if (c.img_small) {
+    imgDiv.innerHTML = `<img src="${esc(c.img_small)}" alt="${esc(cardNameLang(c.name))}" title="Click to zoom" onerror="this.parentNode.innerHTML='<div class=no-img>No image</div>'">`;
+    const img = imgDiv.querySelector('img');
+    if (img) img.addEventListener('click', () => {
+      document.getElementById('zoom-img').src = c.img || c.img_small;
+      document.getElementById('zoom-overlay').classList.add('active');
+    });
+  } else {
+    imgDiv.innerHTML = '<div class="no-img">No image</div>';
+  }
+  document.getElementById('popup-name').textContent = cardNameLang(c.name);
+
+  let meta = `<span style="color:#ccc">${esc(c.subtype)}</span>`;
+  meta += `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:10px;align-items:center">`;
+  meta += `<span class="badge ${c.status}">${c.status}</span>`;
+  if (c.atk !== null) meta += `<span><span style="color:#888;font-size:0.8rem">ATK</span> <span style="color:#e67e22">${c.atk}</span></span>`;
+  if (c.def !== null) meta += `<span><span style="color:#888;font-size:0.8rem">DEF</span> <span style="color:#6699ff">${c.def}</span></span>`;
+  if (c.level !== null) meta += `<span><span style="color:#888;font-size:0.8rem">Lv</span> <span style="color:#f0b429">${c.level}</span></span>`;
+  if (c.attribute) meta += `<span><span style="color:#888;font-size:0.8rem">Attr</span> <span style="color:#88ccff">${esc(c.attribute)}</span></span>`;
+  meta += `</div>`;
+  if (c.tcg_date) meta += `<div style="margin-top:8px"><span style="color:#888;font-size:0.8rem">Rilascio TCG:</span> <span style="color:#f0b429;font-weight:bold">${c.tcg_date}</span></div>`;
+  if (c.set_name) meta += `<div style="margin-top:4px"><span style="color:#888;font-size:0.8rem">Primo set:</span> <span style="color:#c8e8ff">${esc(c.set_name)}</span></div>`;
+  document.getElementById('popup-meta').innerHTML = meta;
+  const descEl = document.getElementById('popup-desc');
+  descEl.textContent = cardDescLang(c.name, c.desc, () => {
+    descEl.textContent = cardDescLang(c.name, c.desc);
+  }) || '';
+  document.getElementById('popup-overlay').classList.add('active');
+}
+
+document.getElementById('popup-close').addEventListener('click', () => document.getElementById('popup-overlay').classList.remove('active'));
+document.getElementById('popup-overlay').addEventListener('click', e => { if (e.target === document.getElementById('popup-overlay')) document.getElementById('popup-overlay').classList.remove('active'); });
+document.getElementById('zoom-overlay').addEventListener('click', () => document.getElementById('zoom-overlay').classList.remove('active'));
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    document.getElementById('zoom-overlay').classList.remove('active');
+    document.getElementById('popup-overlay').classList.remove('active');
+  }
+});
+
+loadData();
+initLangSwitcher('lang-container', () => {
+  if (ALL.length > 0) renderTable();
+});
+</script>
+</body>
+</html>

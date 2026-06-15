@@ -1,0 +1,8 @@
+/* YGO shared lang switcher styles — included by lang.js pages */
+.ygo-lang-btn {
+  background: #1e1e3a; color: #777; border: 1px solid #2a2a4a;
+  border-radius: 4px; padding: 3px 7px; font-size: 0.7rem;
+  cursor: pointer; transition: all 0.12s; font-weight: bold;
+}
+.ygo-lang-btn:hover { background: #2a2a4a; color: #ccc; }
+.ygo-lang-btn.ygo-lang-active { background: #1e2e4a; border-color: #4a7adf; color: #a0c8ff; }

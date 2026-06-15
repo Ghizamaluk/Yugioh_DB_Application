@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>YGO Database</title>
+<link rel="stylesheet" href="lang.css">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', sans-serif;
+    background: #07071a;
+    color: #e0e0e0;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+
+  /* ── Background subtle pattern ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 20% 30%, rgba(192,57,43,0.07) 0%, transparent 70%),
+      radial-gradient(ellipse 50% 40% at 80% 70%, rgba(155,89,182,0.07) 0%, transparent 70%);
+    pointer-events: none;
+  }
+
+  .container {
+    width: 100%; max-width: 900px;
+    padding: 40px 24px;
+    display: flex; flex-direction: column; align-items: center; gap: 48px;
+    position: relative;
+  }
+
+  /* ── Logo / title ── */
+  .logo-area { text-align: center; }
+  .logo-area .star { font-size: 2.5rem; margin-bottom: 10px; }
+  .logo-area h1 {
+    font-size: 2.2rem; font-weight: 800; letter-spacing: 2px;
+    background: linear-gradient(90deg, #c0392b 0%, #e67e22 35%, #f0b429 60%, #9b59b6 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+  }
+  .logo-area p { color: #555; font-size: 0.9rem; margin-top: 6px; letter-spacing: 0.5px; }
+
+  /* ── Cards grid ── */
+  .sections {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px; width: 100%;
+  }
+
+  .section-card {
+    background: #0f0f22;
+    border: 1px solid #1e1e3a;
+    border-radius: 14px;
+    padding: 28px 24px;
+    text-decoration: none;
+    color: inherit;
+    display: flex; flex-direction: column; gap: 12px;
+    transition: transform 0.18s, border-color 0.18s, box-shadow 0.18s;
+    cursor: pointer;
+    position: relative; overflow: hidden;
+  }
+  .section-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    opacity: 0; transition: opacity 0.18s;
+    border-radius: 14px;
+  }
+  .section-card:hover { transform: translateY(-3px); }
+
+  .section-card.banned::before  { background: radial-gradient(ellipse at top left, rgba(192,57,43,0.12), transparent 70%); }
+  .section-card.cards::before   { background: radial-gradient(ellipse at top left, rgba(155,89,182,0.12), transparent 70%); }
+
+  .section-card:hover::before   { opacity: 1; }
+  .section-card.banned:hover  { border-color: #c0392b; box-shadow: 0 4px 24px rgba(192,57,43,0.18); }
+  .section-card.cards:hover   { border-color: #9b59b6; box-shadow: 0 4px 24px rgba(155,89,182,0.18); }
+
+  .section-icon { font-size: 2.2rem; }
+  .section-name { font-size: 1.1rem; font-weight: bold; }
+  .section-card.banned .section-name { color: #e74c3c; }
+  .section-card.cards  .section-name { color: #c39bd3; }
+  .section-desc { font-size: 0.8rem; color: #555; line-height: 1.5; }
+  .section-tag {
+    display: inline-block; margin-top: 4px;
+    font-size: 0.68rem; padding: 2px 8px; border-radius: 4px;
+    align-self: flex-start;
+  }
+  .section-card.banned .section-tag { background: #1e0000; color: #c0392b; border: 1px solid #c0392b; }
+  .section-card.cards  .section-tag { background: #120018; color: #9b59b6; border: 1px solid #9b59b6; }
+
+  /* ── Footer ── */
+  footer { color: #2a2a3a; font-size: 0.72rem; text-align: center; }
+  #lang-wrap { position: fixed; top: 14px; right: 20px; z-index: 10; }
+</style>
+</head>
+<body>
+<div id="lang-wrap"><div id="lang-container"></div></div>
+
+<div class="container">
+
+  <div class="logo-area">
+    <div class="star">&#9876;</div>
+    <h1>YGO DATABASE</h1>
+    <p>Yu-Gi-Oh! TCG — Archivio digitale</p>
+  </div>
+
+  <div class="sections">
+
+    <a class="section-card banned" href="banlist_timeline.html">
+      <div class="section-icon">&#128683;</div>
+      <div class="section-name">Banned Cards</div>
+      <div class="section-desc">
+        Banlist attuale e storica dal 1999 ad oggi.
+        Timeline interattiva di tutte le carte bannate, limitate e semi-limitate.
+      </div>
+      <span class="section-tag">73 ban list · 526 carte</span>
+    </a>
+
+    <a class="section-card cards" href="cards.html">
+      <div class="section-icon">&#9829;</div>
+      <div class="section-name">Tutte le Carte</div>
+      <div class="section-desc">
+        Database completo di tutte le carte YGO TCG.
+        Filtra per status, tipo, ricerca e visualizza tutti i dettagli.
+      </div>
+      <span class="section-tag">~12.000 carte</span>
+    </a>
+
+  </div>
+
+  <footer>Dati: YGOProDeck API &amp; yaml-yugi · Aggiornato automaticamente</footer>
+
+</div>
+
+<script src="lang.js"></script>
+<script>initLangSwitcher('lang-container');</script>
+</body>
+</html>

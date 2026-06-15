@@ -369,9 +369,15 @@ function loadCard() {
   if (idx >= deck.length) { endGame(); return; }
   current = deck[idx];
   waiting = false;
-  // Always show modern image — errata comparison revealed only after answering
-  document.getElementById('card-img').src = current.img;
-  document.getElementById('card-img').onerror = null;
+  // Show pre-errata image if available (that's the version that was banned)
+  const errata = ERRATA[current.en];
+  if (errata) {
+    document.getElementById('card-img').src = YGO_IMG_BASE + encodeURIComponent(errata.img);
+    document.getElementById('card-img').onerror = function() { this.src = current.img; this.onerror = null; };
+  } else {
+    document.getElementById('card-img').src = current.img;
+    document.getElementById('card-img').onerror = null;
+  }
   document.getElementById('card-name').textContent = name(current);
   document.getElementById('card-name-en').textContent = getLang() !== 'en' ? current.en : '';
   showButtons();
@@ -443,17 +449,56 @@ function openCardPopup() {
   if (!current) return;
   const errata = ERRATA[current.en];
 
-  // Image: always modern
-  document.getElementById('popup-card-img').src = current.img.replace('/cards_small/', '/cards/');
-  document.getElementById('popup-card-img').onerror = function() { this.src = current.img; };
   document.getElementById('popup-name').textContent = getLang() === 'it' ? current.it : current.en;
 
-  // Always show current desc
-  document.getElementById('popup-pre').style.display = 'none';
-  document.getElementById('popup-post').style.display = 'block';
-  document.getElementById('popup-meta').textContent = 'Caricamento...';
-  document.getElementById('popup-current-desc').textContent = 'Caricamento...';
+  if (!waiting) {
+    // ── PRE-ANSWER ──────────────────────────────────────────────────
+    // Show pre-errata image + original text only (no spoiler)
+    if (errata) {
+      document.getElementById('popup-card-img').src = YGO_IMG_BASE + encodeURIComponent(errata.img);
+      document.getElementById('popup-card-img').onerror = function() { this.src = current.img; this.onerror = null; };
+      document.getElementById('popup-meta').textContent = '';
+      document.getElementById('popup-pre').style.display = 'block';
+      document.getElementById('popup-post').style.display = 'none';
+      document.getElementById('popup-pre-badge').textContent = '📜 Testo Originale';
+      document.getElementById('popup-pre-desc').textContent = errata.orig;
+      document.getElementById('popup-pre-note').textContent = 'Rispondi per scoprire la versione attuale.';
+    } else {
+      // No errata: show modern image + fetch current desc
+      document.getElementById('popup-card-img').src = current.img.replace('/cards_small/', '/cards/');
+      document.getElementById('popup-card-img').onerror = function() { this.src = current.img; this.onerror = null; };
+      document.getElementById('popup-pre').style.display = 'none';
+      document.getElementById('popup-post').style.display = 'block';
+      document.getElementById('popup-comparison').style.display = 'none';
+      document.getElementById('popup-meta').textContent = 'Caricamento...';
+      document.getElementById('popup-current-desc').textContent = 'Caricamento...';
+      fetchCurrentDesc();
+    }
+  } else {
+    // ── POST-ANSWER ─────────────────────────────────────────────────
+    // Always show modern image + current desc
+    document.getElementById('popup-card-img').src = current.img.replace('/cards_small/', '/cards/');
+    document.getElementById('popup-card-img').onerror = function() { this.src = current.img; this.onerror = null; };
+    document.getElementById('popup-pre').style.display = 'none';
+    document.getElementById('popup-post').style.display = 'block';
+    document.getElementById('popup-meta').textContent = 'Caricamento...';
+    document.getElementById('popup-current-desc').textContent = 'Caricamento...';
+    fetchCurrentDesc();
+    // Show comparison if errata exists
+    if (errata) {
+      document.getElementById('popup-comparison').style.display = 'block';
+      document.getElementById('popup-orig-img').src = YGO_IMG_BASE + encodeURIComponent(errata.img);
+      document.getElementById('popup-orig-img').onerror = function() { this.style.display = 'none'; };
+      document.getElementById('popup-orig-desc').textContent = errata.orig;
+    } else {
+      document.getElementById('popup-comparison').style.display = 'none';
+    }
+  }
 
+  document.getElementById('popup-overlay').classList.add('open');
+}
+
+function fetchCurrentDesc() {
   fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name=' + encodeURIComponent(current.en))
     .then(r => r.json())
     .then(d => {
@@ -465,18 +510,6 @@ function openCardPopup() {
       }
     })
     .catch(() => { document.getElementById('popup-meta').textContent = ''; document.getElementById('popup-current-desc').textContent = ''; });
-
-  // Errata comparison: only show AFTER the user has answered
-  if (errata && waiting) {
-    document.getElementById('popup-comparison').style.display = 'block';
-    document.getElementById('popup-orig-img').src = YGO_IMG_BASE + encodeURIComponent(errata.img);
-    document.getElementById('popup-orig-img').onerror = function() { this.style.display = 'none'; };
-    document.getElementById('popup-orig-desc').textContent = errata.orig;
-  } else {
-    document.getElementById('popup-comparison').style.display = 'none';
-  }
-
-  document.getElementById('popup-overlay').classList.add('open');
 }
 
 function closePopup(e) {

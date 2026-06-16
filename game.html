@@ -359,6 +359,36 @@ function restart() {
   document.getElementById('game').style.display = 'flex';
   document.getElementById('scorebar').style.display = 'flex';
   loadCard();
+  preloadDescs();
+}
+
+function preloadDescs() {
+  const langParam = apiLangParam();
+  const ids = ALL_CARDS
+    .map(c => { const m = c.img.match(/\/(\d+)\.jpg/); return m ? m[1] : null; })
+    .filter(Boolean);
+  const cacheKey = id => id + (langParam || 'en');
+  const missing = ids.filter(id => !_descCache[cacheKey(id)]);
+  if (!missing.length) return;
+  // Batch fetch up to 10 ids at a time to stay within API limits
+  const chunks = [];
+  for (let i = 0; i < missing.length; i += 10) chunks.push(missing.slice(i, i + 10));
+  chunks.forEach((chunk, ci) => {
+    setTimeout(() => {
+      fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?id=' + chunk.join('%7C') + langParam)
+        .then(r => r.json())
+        .then(d => {
+          (d.data || []).forEach(c => {
+            const m = (c.card_images && c.card_images[0]) ? String(c.card_images[0].id) : null;
+            if (!m) return;
+            const key = m + (langParam || 'en');
+            const meta = [c.humanReadableCardType, c.attribute, c.level ? 'Lv.' + c.level : '', c.atk != null ? 'ATK ' + c.atk : '', c.def != null ? 'DEF ' + c.def : ''].filter(Boolean).join(' · ');
+            _descCache[key] = { meta, desc: c.desc || '' };
+          });
+        })
+        .catch(() => {});
+    }, ci * 600);
+  });
 }
 
 function loadCard() {
@@ -456,11 +486,10 @@ function openCardPopup() {
     document.getElementById('popup-pre').style.display = 'block';
     document.getElementById('popup-post').style.display = 'none';
     document.getElementById('popup-pre-badge').style.display = 'none';
-    document.getElementById('popup-pre-desc').textContent = errata ? errata.orig : '...';
+    document.getElementById('popup-pre-desc').textContent = errata ? errata.orig : 'Caricamento…';
     document.getElementById('popup-pre-note').textContent = '';
 
     if (!errata) {
-      // fetch current desc for cards without errata
       fetchCurrentDesc(txt => { document.getElementById('popup-pre-desc').textContent = txt; });
     }
   } else {

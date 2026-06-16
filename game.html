@@ -364,15 +364,9 @@ function loadCard() {
   if (idx >= deck.length) { endGame(); return; }
   current = deck[idx];
   waiting = false;
-  // Show pre-errata image if available (that's the version that was banned)
-  const errata = ERRATA[current.en];
-  if (errata) {
-    document.getElementById('card-img').src = YGO_IMG_BASE + encodeURIComponent(errata.img);
-    document.getElementById('card-img').onerror = function() { this.src = current.img; this.onerror = null; };
-  } else {
-    document.getElementById('card-img').src = current.img;
-    document.getElementById('card-img').onerror = null;
-  }
+  // Always use the fast YGOProDeck CDN for the main card — yugipedia only in popup
+  document.getElementById('card-img').src = current.img;
+  document.getElementById('card-img').onerror = null;
   document.getElementById('card-name').textContent = name(current);
   document.getElementById('card-name-en').textContent = getLang() !== 'en' ? current.en : '';
   showButtons();

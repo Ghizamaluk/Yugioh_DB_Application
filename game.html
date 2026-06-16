@@ -279,9 +279,9 @@
 </div>
 
 <!-- CARD DETAIL POPUP -->
-<div id="popup-overlay" onclick="closePopup(event)">
+<div id="popup-overlay">
   <div id="popup">
-    <button id="popup-close" onclick="closePopup()">&#x2715;</button>
+    <button id="popup-close">&#x2715;</button>
     <div id="popup-img-col">
       <img id="popup-card-img" src="" alt="">
     </div>
@@ -317,7 +317,8 @@
 const ALL_CARDS = [{"en":"Cyber Jar","it":"Cyber Giara","img":"https://images.ygoprodeck.com/images/cards_small/34124316.jpg","ever_banned":true},{"en":"Exchange","it":"Scambio Illuminato","img":"https://images.ygoprodeck.com/images/cards_small/5556668.jpg","ever_banned":false},{"en":"Trap Dustshoot","it":"Trappola Botola","img":"https://images.ygoprodeck.com/images/cards_small/64697231.jpg","ever_banned":true},{"en":"Sinister Serpent","it":"Serpente Sinistro","img":"https://images.ygoprodeck.com/images/cards_small/8131171.jpg","ever_banned":true},{"en":"Ocean Dragon Lord - Neo-Daedalus","it":"Signore dei Draghi Neo Dedalo","img":"https://images.ygoprodeck.com/images/cards_small/10485110.jpg","ever_banned":false},{"en":"Skill Drain","it":"Risucchia Abilità","img":"https://images.ygoprodeck.com/images/cards_small/82732705.jpg","ever_banned":false},{"en":"Dark Strike Fighter","it":"Guerriero Colpo Oscuro","img":"https://images.ygoprodeck.com/images/cards_small/32646477.jpg","ever_banned":true},{"en":"Mefist the Infernal General","it":"Mefist il Generale Infernale","img":"https://images.ygoprodeck.com/images/cards_small/46820049.jpg","ever_banned":false},{"en":"Dark Armed Dragon","it":"Drago Armato Oscuro","img":"https://images.ygoprodeck.com/images/cards_small/65192027.jpg","ever_banned":false},{"en":"Butterfly Dagger - Elma","it":"Pugnale a Farfalla","img":"https://images.ygoprodeck.com/images/cards_small/69243953.jpg","ever_banned":true},{"en":"Chaos Emperor Dragon - Envoy of the End","it":"Drago Imperatore del Caos","img":"https://images.ygoprodeck.com/images/cards_small/82301904.jpg","ever_banned":true},{"en":"Future Fusion","it":"Fusione Futura","img":"https://images.ygoprodeck.com/images/cards_small/77565204.jpg","ever_banned":true},{"en":"Imperial Order","it":"Ordine Imperiale","img":"https://images.ygoprodeck.com/images/cards_small/61740673.jpg","ever_banned":true},{"en":"Reasoning","it":"Ragionando","img":"https://images.ygoprodeck.com/images/cards_small/58577036.jpg","ever_banned":false},{"en":"Witch of the Black Forest","it":"Strega della Foresta Nera","img":"https://images.ygoprodeck.com/images/cards_small/78010363.jpg","ever_banned":true},{"en":"Creature Swap","it":"Scambio Creature","img":"https://images.ygoprodeck.com/images/cards_small/31036355.jpg","ever_banned":false},{"en":"Des Lacooda","it":"Des Lacooda","img":"https://images.ygoprodeck.com/images/cards_small/2326738.jpg","ever_banned":false},{"en":"Super Polymerization","it":"Super Polimerizzazione","img":"https://images.ygoprodeck.com/images/cards_small/48130397.jpg","ever_banned":true},{"en":"Tribe-Infecting Virus","it":"Tribe-Infecting Virus","img":"https://images.ygoprodeck.com/images/cards_small/33184167.jpg","ever_banned":true},{"en":"Pot of Desires","it":"Pot of Desires","img":"https://images.ygoprodeck.com/images/cards_small/35261759.jpg","ever_banned":false},{"en":"Demise, King of Armageddon","it":"Demise, Re dell'Armageddon","img":"https://images.ygoprodeck.com/images/cards_small/72426662.jpg","ever_banned":false},{"en":"Number 51: Finisher the Strong Arm","it":"Numero 51: Finitore","img":"https://images.ygoprodeck.com/images/cards_small/56292140.jpg","ever_banned":false},{"en":"Solemn Judgment","it":"Giudizio Solenne","img":"https://images.ygoprodeck.com/images/cards_small/41420027.jpg","ever_banned":true},{"en":"Fairy Box","it":"Scatola Fatata","img":"https://images.ygoprodeck.com/images/cards_small/21598948.jpg","ever_banned":false}];
 
 let deck = [], current = null, idx = 0, correct = 0, wrong = 0, history = [];
-let waiting = false; // true = answered, waiting for "next"
+let waiting = false;
+const _descCache = {}; // passcode → {meta, desc}
 
 function shuffle(a) {
   const b = [...a];
@@ -489,6 +490,16 @@ function openCardPopup() {
 function fetchCurrentDesc(callback) {
   const langParam = apiLangParam();
   const idMatch = current.img.match(/\/(\d+)\.jpg/);
+  const cacheKey = (idMatch ? idMatch[1] : current.en) + (langParam || 'en');
+
+  if (_descCache[cacheKey]) {
+    const cached = _descCache[cacheKey];
+    document.getElementById('popup-meta').textContent = cached.meta;
+    if (callback) callback(cached.desc);
+    else document.getElementById('popup-current-desc').textContent = cached.desc;
+    return;
+  }
+
   const query = idMatch
     ? 'id=' + idMatch[1]
     : 'name=' + encodeURIComponent(current.en);
@@ -498,18 +509,25 @@ function fetchCurrentDesc(callback) {
       if (d.data && d.data[0]) {
         const c = d.data[0];
         const meta = [c.humanReadableCardType, c.attribute, c.level ? 'Lv.' + c.level : '', c.atk != null ? 'ATK ' + c.atk : '', c.def != null ? 'DEF ' + c.def : ''].filter(Boolean).join(' · ');
+        const desc = c.desc || '';
+        _descCache[cacheKey] = { meta, desc };
         document.getElementById('popup-meta').textContent = meta;
-        if (callback) callback(c.desc || '');
-        else document.getElementById('popup-current-desc').textContent = c.desc || '';
+        if (callback) callback(desc);
+        else document.getElementById('popup-current-desc').textContent = desc;
       }
     })
     .catch(() => {});
 }
 
-function closePopup(e) {
-  if (e && e.target !== document.getElementById('popup-overlay') && e.target !== document.getElementById('popup-close')) return;
+function closePopup() {
   document.getElementById('popup-overlay').classList.remove('open');
 }
+
+const _overlay = document.getElementById('popup-overlay');
+const _popup   = document.getElementById('popup-close');
+_overlay.addEventListener('click', e => { if (e.target === _overlay) closePopup(); });
+_popup.addEventListener('click', closePopup);
+document.getElementById('popup').addEventListener('click', e => e.stopPropagation());
 
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') { document.getElementById('popup-overlay').classList.remove('open'); return; }

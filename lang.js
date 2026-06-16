@@ -2,8 +2,6 @@
  * YGO Database — shared language module
  * Usage: include this script, then call initLangSwitcher('container-id')
  * Lang is persisted in localStorage key 'ygo_lang'
- * Requires: names.js to be loaded (always)
- * Lazy-loads: descs.js on first desc request
  */
 
 const YGO_LANGS = [
@@ -11,7 +9,6 @@ const YGO_LANGS = [
   { code: 'it', label: 'IT' },
   { code: 'fr', label: 'FR' },
   { code: 'de', label: 'DE' },
-  { code: 'es', label: 'ES' },
 ];
 
 function getLang() {
@@ -20,6 +17,12 @@ function getLang() {
 
 function setLang(code) {
   localStorage.setItem('ygo_lang', code);
+}
+
+// Returns the API language query param string (empty string for EN)
+function apiLangParam() {
+  const lang = getLang();
+  return lang === 'en' ? '' : '&language=' + lang;
 }
 
 function initLangSwitcher(containerId, onChangeFn) {
@@ -44,35 +47,4 @@ function initLangSwitcher(containerId, onChangeFn) {
     wrapper.appendChild(btn);
   });
   container.appendChild(wrapper);
-}
-
-// names.js must be loaded before calling this
-function cardNameLang(enName) {
-  const lang = getLang();
-  if (lang === 'en') return enName;
-  const t = (typeof YGO_CARD_NAMES !== 'undefined') && YGO_CARD_NAMES[enName];
-  return (t && t[lang]) || enName;
-}
-
-// descs.js is lazy-loaded on first call if not already present
-let _descsLoading = false;
-let _descsCallbacks = [];
-
-function cardDescLang(enName, enDesc, onReady) {
-  const lang = getLang();
-  if (lang === 'en') return enDesc;
-  if (typeof YGO_CARD_DESCS !== 'undefined') {
-    const t = YGO_CARD_DESCS[enName];
-    return (t && t[lang]) || enDesc;
-  }
-  // Lazy-load descs.js then call onReady if provided
-  if (onReady && !_descsLoading) {
-    _descsLoading = true;
-    const s = document.createElement('script');
-    s.src = 'descs.js';
-    s.onload = () => { _descsCallbacks.forEach(cb => cb()); _descsCallbacks = []; };
-    document.head.appendChild(s);
-  }
-  if (onReady) _descsCallbacks.push(onReady);
-  return enDesc; // return EN desc while loading
 }

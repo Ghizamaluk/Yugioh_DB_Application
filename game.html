@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>La Banni o la Giochi?</title>
+<title>La Giochi o la Banni?</title>
 <link rel="stylesheet" href="lang.css">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -209,7 +209,7 @@
 
 <div id="topbar">
   <a class="back-btn" href="index.html">&#8592; Home</a>
-  <h1>&#128683; La Banni o la Giochi?</h1>
+  <h1>&#128683; La Giochi o la Banni?</h1>
   <div id="lang-container"></div>
 </div>
 
@@ -253,16 +253,11 @@
 
   <!-- Answer buttons (hidden after answering) -->
   <div id="buttons">
-    <button class="ans-btn" id="btn-banned" onclick="answer(true)">
-      <span class="bicon">&#128683;</span>
-      <span>&#200; stata Forbidden</span>
-      <span class="blabel">almeno una volta</span>
-    </button>
-    <button class="ans-btn" id="btn-free" onclick="answer(false)">
-      <span class="bicon">&#10003;</span>
-      <span>Mai Forbidden</span>
-      <span class="blabel">mai nella lista rossa</span>
-    </button>
+    <div style="width:100%;text-align:center;font-size:0.85rem;color:#aaa;letter-spacing:0.05em;text-transform:uppercase;margin-bottom:4px;">Bannata?</div>
+    <div style="display:flex;gap:14px;width:100%;">
+      <button class="ans-btn" id="btn-banned" onclick="answer(true)">Sì</button>
+      <button class="ans-btn" id="btn-free"   onclick="answer(false)">No</button>
+    </div>
   </div>
 
   <!-- Next arrow (shown after answering) -->
@@ -498,7 +493,12 @@ function openCardPopup() {
 }
 
 function fetchCurrentDesc(callback) {
-  fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?name=' + encodeURIComponent(current.en))
+  const langParam = apiLangParam();
+  const idMatch = current.img.match(/\/(\d+)\.jpg/);
+  const query = idMatch
+    ? 'id=' + idMatch[1]
+    : 'name=' + encodeURIComponent(current.en);
+  fetch('https://db.ygoprodeck.com/api/v7/cardinfo.php?' + query + langParam)
     .then(r => r.json())
     .then(d => {
       if (d.data && d.data[0]) {

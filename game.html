@@ -142,16 +142,14 @@
   .ans-btn {
     flex: 1; padding: 14px 8px; border-radius: 12px;
     font-size: 0.9rem; font-weight: bold; cursor: pointer;
-    border: 2px solid transparent; transition: all 0.15s;
+    border: 2px solid #444; background: #1e1e3a; color: #eee;
+    transition: all 0.15s;
     display: flex; flex-direction: column; align-items: center; gap: 4px;
     user-select: none;
   }
-  .ans-btn .bicon { font-size: 1.5rem; }
-  .ans-btn .blabel { font-size: 0.7rem; opacity: 0.7; }
-  #btn-banned { background: #1e0000; border-color: #c0392b; color: #e74c3c; }
-  #btn-banned:hover { background: #2e0000; border-color: #e74c3c; transform: translateY(-2px); }
-  #btn-free   { background: #001a08; border-color: #27ae60; color: #2ecc71; }
-  #btn-free:hover   { background: #002a12; border-color: #2ecc71; transform: translateY(-2px); }
+  .ans-btn:hover { background: #2a2a4a; border-color: #888; transform: translateY(-2px); }
+  .ans-btn.btn-correct { background: #27ae60; border-color: #2ecc71; color: #fff; }
+  .ans-btn.btn-wrong   { background: #c0392b; border-color: #e74c3c; color: #fff; }
 
   /* Next button */
   #btn-next {
@@ -316,7 +314,7 @@
 <script>
 const ALL_CARDS = [{"en":"Cyber Jar","it":"Cyber Giara","img":"https://images.ygoprodeck.com/images/cards_small/34124316.jpg","ever_banned":true},{"en":"Exchange","it":"Scambio Illuminato","img":"https://images.ygoprodeck.com/images/cards_small/5556668.jpg","ever_banned":false},{"en":"Trap Dustshoot","it":"Trappola Botola","img":"https://images.ygoprodeck.com/images/cards_small/64697231.jpg","ever_banned":true},{"en":"Sinister Serpent","it":"Serpente Sinistro","img":"https://images.ygoprodeck.com/images/cards_small/8131171.jpg","ever_banned":true},{"en":"Ocean Dragon Lord - Neo-Daedalus","it":"Signore dei Draghi Neo Dedalo","img":"https://images.ygoprodeck.com/images/cards_small/10485110.jpg","ever_banned":false},{"en":"Skill Drain","it":"Risucchia Abilità","img":"https://images.ygoprodeck.com/images/cards_small/82732705.jpg","ever_banned":false},{"en":"Dark Strike Fighter","it":"Guerriero Colpo Oscuro","img":"https://images.ygoprodeck.com/images/cards_small/32646477.jpg","ever_banned":true},{"en":"Mefist the Infernal General","it":"Mefist il Generale Infernale","img":"https://images.ygoprodeck.com/images/cards_small/46820049.jpg","ever_banned":false},{"en":"Dark Armed Dragon","it":"Drago Armato Oscuro","img":"https://images.ygoprodeck.com/images/cards_small/65192027.jpg","ever_banned":false},{"en":"Butterfly Dagger - Elma","it":"Pugnale a Farfalla","img":"https://images.ygoprodeck.com/images/cards_small/69243953.jpg","ever_banned":true},{"en":"Chaos Emperor Dragon - Envoy of the End","it":"Drago Imperatore del Caos","img":"https://images.ygoprodeck.com/images/cards_small/82301904.jpg","ever_banned":true},{"en":"Future Fusion","it":"Fusione Futura","img":"https://images.ygoprodeck.com/images/cards_small/77565204.jpg","ever_banned":true},{"en":"Imperial Order","it":"Ordine Imperiale","img":"https://images.ygoprodeck.com/images/cards_small/61740673.jpg","ever_banned":true},{"en":"Reasoning","it":"Ragionando","img":"https://images.ygoprodeck.com/images/cards_small/58577036.jpg","ever_banned":false},{"en":"Witch of the Black Forest","it":"Strega della Foresta Nera","img":"https://images.ygoprodeck.com/images/cards_small/78010363.jpg","ever_banned":true},{"en":"Creature Swap","it":"Scambio Creature","img":"https://images.ygoprodeck.com/images/cards_small/31036355.jpg","ever_banned":false},{"en":"Des Lacooda","it":"Des Lacooda","img":"https://images.ygoprodeck.com/images/cards_small/2326738.jpg","ever_banned":false},{"en":"Super Polymerization","it":"Super Polimerizzazione","img":"https://images.ygoprodeck.com/images/cards_small/48130397.jpg","ever_banned":true},{"en":"Tribe-Infecting Virus","it":"Tribe-Infecting Virus","img":"https://images.ygoprodeck.com/images/cards_small/33184167.jpg","ever_banned":true},{"en":"Pot of Desires","it":"Pot of Desires","img":"https://images.ygoprodeck.com/images/cards_small/35261759.jpg","ever_banned":false},{"en":"Demise, King of Armageddon","it":"Demise, Re dell'Armageddon","img":"https://images.ygoprodeck.com/images/cards_small/72426662.jpg","ever_banned":false},{"en":"Number 51: Finisher the Strong Arm","it":"Numero 51: Finitore","img":"https://images.ygoprodeck.com/images/cards_small/56292140.jpg","ever_banned":false},{"en":"Solemn Judgment","it":"Giudizio Solenne","img":"https://images.ygoprodeck.com/images/cards_small/41420027.jpg","ever_banned":true},{"en":"Fairy Box","it":"Scatola Fatata","img":"https://images.ygoprodeck.com/images/cards_small/21598948.jpg","ever_banned":false}];
 
-let deck = [], current = null, idx = 0, correct = 0, wrong = 0, history = [];
+let deck = [], current = null, currentGuess = null, idx = 0, correct = 0, wrong = 0, history = [];
 let waiting = false;
 const _descCache = {}; // passcode → {meta, desc}
 
@@ -339,14 +337,23 @@ function showButtons()  {
   document.getElementById('btn-next').classList.remove('visible');
   document.getElementById('result-indicator').classList.remove('show');
   document.getElementById('result-indicator').textContent = '';
+  document.getElementById('btn-banned').className = 'ans-btn';
+  document.getElementById('btn-free').className   = 'ans-btn';
   document.getElementById('card-img').className = '';
 }
-function showResult(correct) {
-  document.getElementById('buttons').style.visibility = 'hidden';
+function showResult(ok) {
+  const btnCorrect = current.ever_banned
+    ? document.getElementById('btn-banned')
+    : document.getElementById('btn-free');
+  const btnWrong = current.ever_banned
+    ? document.getElementById('btn-free')
+    : document.getElementById('btn-banned');
+  btnCorrect.classList.add('btn-correct');
+  if (!ok) btnWrong.classList.add('btn-wrong');
   const ind = document.getElementById('result-indicator');
-  ind.textContent = correct ? '👍' : '👎';
+  ind.textContent = ok ? '👍' : '👎';
   ind.classList.add('show');
-  document.getElementById('card-img').className = correct ? 'correct' : 'wrong';
+  document.getElementById('card-img').className = ok ? 'correct' : 'wrong';
   document.getElementById('btn-next').classList.add('visible');
 }
 
@@ -407,6 +414,7 @@ function loadCard() {
 function answer(guessBanned) {
   if (waiting) return;
   waiting = true;
+  currentGuess = guessBanned;
   const ok = (guessBanned === current.ever_banned);
   if (ok) correct++; else wrong++;
   history.push({ card: current, ok });
